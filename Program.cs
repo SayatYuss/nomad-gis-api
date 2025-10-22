@@ -48,6 +48,7 @@ builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IMapPointService, MapPointService>();
 builder.Services.AddScoped<IAchievementService, AchievementService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IGameService, GameService>();
 
 // ========== CORS ==========
 // Добавляем политику CORS
