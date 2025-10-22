@@ -18,20 +18,30 @@ public class JwtService
     public JwtService(IConfiguration configuration)
     {
         _jwtSecret = configuration["Jwt:Secret"] ?? throw new Exception("Jwt:Secret not configured");
-        _issuer = configuration["Jwt:Issuer"] ?? "corpMessengerAPI";
-        _audience = configuration["Jwt:Audience"] ?? "corpMessengerAPI_users";
-        _accessTokenExpirationMinutes = int.Parse(configuration["Jwt:AccessTokenExpirationMinutes"] ?? "15");
-        _refreshTokenExpirationDays = int.Parse(configuration["Jwt:RefreshTokenExpirationDays"] ?? "7");
+        _issuer = configuration["Jwt:Issuer"] ?? "nomad_gis_V2";
+        _audience = configuration["Jwt:Audience"] ?? "nomad_gis_users";
+
+        // --- ИЗМЕНЕНО ДЛЯ БЕЗОПАСНОСТИ ---
+        if (!int.TryParse(configuration["Jwt:AccessTokenExpirationMinutes"], out _accessTokenExpirationMinutes))
+        {
+            _accessTokenExpirationMinutes = 15; // Значение по умолчанию
+        }
+        
+        if (!int.TryParse(configuration["Jwt:RefreshTokenExpirationDays"], out _refreshTokenExpirationDays))
+        {
+            _refreshTokenExpirationDays = 7; // Значение по умолчанию
+        }
+        // --- КОНЕЦ ИЗМЕНЕНИЙ ---
     }
 
-    public (string AccessToken, string RefreshToken) GenerateTokens(User user, string role = "User")
+    public (string AccessToken, string RefreshToken) GenerateTokens(User user)
     {
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
-            new Claim(ClaimTypes.Role, role),
+            new Claim(ClaimTypes.Role, user.Role), // <-- 2. Читаем роль из объекта user
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

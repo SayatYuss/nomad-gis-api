@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using nomad_gis_V2.Data;
 using nomad_gis_V2.Interfaces;
+using nomad_gis_V2.Middleware;
 using nomad_gis_V2.Models;
 using nomad_gis_V2.Services;
 using System.Text;
@@ -48,8 +49,22 @@ builder.Services.AddScoped<IMapPointService, MapPointService>();
 builder.Services.AddScoped<IAchievementService, AchievementService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 
+// ========== CORS ==========
+// Добавляем политику CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAdminPanel",
+        builder =>
+        {
+            builder.AllowAnyOrigin() // Для разработки. В production укажи конкретный домен
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+});
+
 
 // ========== Контроллеры и Swagger ==========
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -77,16 +92,34 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+
 var app = builder.Build();
 
-// ========== Автоматическая миграция при запуске ==========
-using (var scope = app.Services.CreateScope())
+// ========== 2. ВЫЗОВ DATA SEEDER ==========
+// (Лучше запускать только в Development-режиме, 
+// чтобы не проверять БД каждый раз в production)
+if (app.Environment.IsDevelopment()) 
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        try
+        {
+            // Вызываем наш статический метод сидера
+            await DataSeeder.SeedAdminUser(services, configuration);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred during admin user seeding.");
+        }
+    }
 }
 
 // ========== Middleware ==========
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -94,6 +127,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowAdminPanel");
 
 // Включаем аутентификацию и авторизацию
 app.UseAuthentication();

@@ -4,7 +4,9 @@ namespace nomad_gis_V2.Interfaces;
 
 public interface IMessageService
 {
-    Task<MessageResponse> AddMessageAsync(Guid userId, MessageRequest request);
-    Task<IEnumerable<MessageResponse>> GetMessagesByPointAsync(Guid mapPointId);
+    Task<MessageResponse> CreateMessageAsync(Guid userId, MessageRequest request);
+    Task<IEnumerable<MessageResponse>> GetMessagesByPointIdAsync(Guid mapPointId);
+    Task<bool> DeleteMessageAsync(Guid messageId, Guid userId);
+    Task<bool> AdminDeleteMessageAsync(Guid messageId);
 }
 

@@ -22,59 +22,34 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        try
-        {
-            var result = await _authService.RegisterAsync(request);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var result = await _authService.RegisterAsync(request);
+        return Ok(result);
     }
 
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        try
-        {
-            var result = await _authService.LoginAsync(request);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var result = await _authService.LoginAsync(request);
+        return Ok(result);
     }
 
     [HttpPost("refresh")]
+    [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
-        try
-        {
-            var result = await _authService.RefreshTokenAsync(request);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
+        // try-catch убран.
+        var result = await _authService.RefreshTokenAsync(request);
+        return Ok(result);
     }
 
     [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
     {
-        try
-        {
-            bool success = await _authService.LogoutAsync(request);
-            if (!success) return NotFound(new { message = "Refresh token not found" });
+        // try-catch убран.
+        bool success = await _authService.LogoutAsync(request);
+        if (!success) return NotFound(new { message = "Refresh token not found" });
 
-            return Ok(new { message = "Logged out successfully" });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return Ok(new { message = "Logged out successfully" });
     }
 }

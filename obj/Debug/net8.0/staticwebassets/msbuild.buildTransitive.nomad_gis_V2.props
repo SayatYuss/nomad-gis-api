@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../buildMultiTargeting/nomad_gis_V2.props" />
-</Project>

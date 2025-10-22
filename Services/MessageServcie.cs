@@ -15,7 +15,7 @@ namespace nomad_gis_V2.Services
             _context = context;
         }
 
-        public async Task<MessageResponse> AddMessageAsync(Guid userId, MessageRequest request)
+        public async Task<MessageResponse> CreateMessageAsync(Guid userId, MessageRequest request)
         {
             var user = await _context.Users.FindAsync(userId)
                 ?? throw new Exception("Пользователь не найден.");
@@ -44,7 +44,7 @@ namespace nomad_gis_V2.Services
             };
         }
 
-        public async Task<IEnumerable<MessageResponse>> GetMessagesByPointAsync(Guid mapPointId)
+        public async Task<IEnumerable<MessageResponse>> GetMessagesByPointIdAsync(Guid mapPointId)
         {
             var messages = await _context.Messages
                 .Where(m => m.MapPointId == mapPointId)
@@ -61,6 +61,32 @@ namespace nomad_gis_V2.Services
                 Username = m.User.Username,
                 MapPointId = m.MapPointId
             });
+        }
+
+        public async Task<bool> AdminDeleteMessageAsync(Guid messageId)
+        {
+            var message = await _context.Messages.FindAsync(messageId);
+            if (message == null)
+            {
+                return false;
+            }
+
+            _context.Messages.Remove(message);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteMessageAsync(Guid messageId, Guid userId)
+        {
+            var message = await _context.Messages.FindAsync(messageId);
+            if (message == null || message.UserId != userId)
+            {
+                return false;
+            }
+
+            _context.Messages.Remove(message);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

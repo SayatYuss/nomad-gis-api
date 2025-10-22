@@ -25,6 +25,9 @@ public class User
     public int Experience { get; set; } = 0;
     public int Level { get; set; } = 1;
 
+    [Required, MaxLength(50)]
+    public string Role { get; set; } = "User"; // По умолчанию "User"
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

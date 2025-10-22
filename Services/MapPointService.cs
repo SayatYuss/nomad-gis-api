@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using nomad_gis_V2.Data;
 using nomad_gis_V2.DTOs.Points;
@@ -9,69 +10,45 @@ namespace nomad_gis_V2.Services
     public class MapPointService : IMapPointService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IMapper _mapper; // <-- 1. Добавляем IMapper
 
-        public MapPointService(ApplicationDbContext context)
+        // 2. Внедряем IMapper через конструктор
+        public MapPointService(ApplicationDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         public async Task<List<MapPointRequest>> GetAllAsync()
         {
-            return await _context.MapPoints
-                .Select(mp => new MapPointRequest
-                {
-                    Id = mp.Id,
-                    Name = mp.Name,
-                    Latitude = mp.Latitude,
-                    Longitude = mp.Longitude,
-                    UnlockRadiusMeters = mp.UnlockRadiusMeters,
-                    Description = mp.Description,
-                    CreatedAt = mp.CreatedAt
-                })
-                .ToListAsync();
+            var points = await _context.MapPoints.ToListAsync();
+            // 3. Используем маппинг
+            return _mapper.Map<List<MapPointRequest>>(points);
         }
 
         public async Task<MapPointRequest?> GetByIdAsync(Guid id)
         {
             var mp = await _context.MapPoints.FindAsync(id);
             if (mp == null) return null;
-
-            return new MapPointRequest
-            {
-                Id = mp.Id,
-                Name = mp.Name,
-                Latitude = mp.Latitude,
-                Longitude = mp.Longitude,
-                UnlockRadiusMeters = mp.UnlockRadiusMeters,
-                Description = mp.Description,
-                CreatedAt = mp.CreatedAt
-            };
+            
+            // 3. Используем маппинг
+            return _mapper.Map<MapPointRequest>(mp);
         }
 
         public async Task<MapPointRequest> CreateAsync(MapPointCreateRequest dto)
         {
-            var mp = new MapPoint
-            {
-                Name = dto.Name,
-                Latitude = dto.Latitude,
-                Longitude = dto.Longitude,
-                UnlockRadiusMeters = dto.UnlockRadiusMeters,
-                Description = dto.Description
-            };
+            // 3. Используем маппинг
+            var mp = _mapper.Map<MapPoint>(dto);
+            
+            // Устанавливаем значения по умолчанию, если они не в DTO
+            mp.Id = Guid.NewGuid();
+            mp.CreatedAt = DateTime.UtcNow;
 
             _context.MapPoints.Add(mp);
             await _context.SaveChangesAsync();
-
-            return new MapPointRequest
-            {
-                Id = mp.Id,
-                Name = mp.Name,
-                Latitude = mp.Latitude,
-                Longitude = mp.Longitude,
-                UnlockRadiusMeters = mp.UnlockRadiusMeters,
-                Description = mp.Description,
-                CreatedAt = mp.CreatedAt
-            };
+            
+            // 3. Используем маппинг
+            return _mapper.Map<MapPointRequest>(mp);
         }
 
         public async Task<MapPointRequest?> UpdateAsync(Guid id, MapPointUpdateRequest dto)
@@ -79,25 +56,13 @@ namespace nomad_gis_V2.Services
             var mp = await _context.MapPoints.FindAsync(id);
             if (mp == null) return null;
 
-            mp.Name = dto.Name;
-            mp.Latitude = dto.Latitude;
-            mp.Longitude = dto.Longitude;
-            mp.UnlockRadiusMeters = dto.UnlockRadiusMeters;
-            mp.Description = dto.Description;
+            // 3. Используем AutoMapper для обновления существующей сущности
+            _mapper.Map(dto, mp);
 
             _context.MapPoints.Update(mp);
             await _context.SaveChangesAsync();
 
-            return new MapPointRequest
-            {
-                Id = mp.Id,
-                Name = mp.Name,
-                Latitude = mp.Latitude,
-                Longitude = mp.Longitude,
-                UnlockRadiusMeters = mp.UnlockRadiusMeters,
-                Description = mp.Description,
-                CreatedAt = mp.CreatedAt
-            };
+            return _mapper.Map<MapPointRequest>(mp);
         }
 
         public async Task<bool> DeleteAsync(Guid id)

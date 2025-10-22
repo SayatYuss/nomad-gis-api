@@ -83,12 +83,12 @@ public class ApplicationDbContext : DbContext
             b.HasKey(m => m.Id);
 
             b.HasOne(m => m.User)
-                .WithMany(u => u.Messages)
+                .WithMany(u => u.Messages) // <-- Указываем обратную связь
                 .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             b.HasOne(m => m.Point)
-                .WithMany()
+                .WithMany(p => p.Messages) // <-- ИЗМЕНЕНО (вместо .WithMany())
                 .HasForeignKey(m => m.MapPointId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
@@ -100,5 +100,25 @@ public class ApplicationDbContext : DbContext
             b.Property(rt => rt.Token).IsRequired().HasMaxLength(512);
             b.Property(rt => rt.DeviceId).IsRequired().HasMaxLength(200);
         });
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var entries = ChangeTracker
+            .Entries()
+            .Where(e => e.Entity is User && 
+                        (e.State == EntityState.Added || e.State == EntityState.Modified));
+
+        foreach (var entityEntry in entries)
+        {
+            ((User)entityEntry.Entity).UpdatedAt = DateTime.UtcNow;
+
+            if (entityEntry.State == EntityState.Added)
+            {
+                ((User)entityEntry.Entity).CreatedAt = DateTime.UtcNow;
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
     }
 }

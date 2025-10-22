@@ -38,6 +38,7 @@ namespace nomad_gis_V2.Controllers
 
         // POST: api/MapPoints
         [HttpPost]
+        [Authorize(Roles = "Admin")] // <-- ДОБАВЛЕНО
         public async Task<IActionResult> Create([FromBody] MapPointCreateRequest dto)
         {
             var created = await _mapPointService.CreateAsync(dto);
@@ -46,6 +47,7 @@ namespace nomad_gis_V2.Controllers
 
         // PUT: api/MapPoints/{id}
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")] // <-- ДОБАВЛЕНО
         public async Task<IActionResult> Update(Guid id, [FromBody] MapPointUpdateRequest dto)
         {
             var updated = await _mapPointService.UpdateAsync(id, dto);
@@ -55,6 +57,7 @@ namespace nomad_gis_V2.Controllers
 
         // DELETE: api/MapPoints/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")] // <-- ДОБАВЛЕНО
         public async Task<IActionResult> Delete(Guid id)
         {
             var deleted = await _mapPointService.DeleteAsync(id);
