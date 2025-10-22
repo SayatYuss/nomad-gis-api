@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("nomad_gis_V2")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e0e485e3e24191a61e0d2a79b3c1769c0b1e5ffa")]
 [assembly: System.Reflection.AssemblyProductAttribute("nomad_gis_V2")]
 [assembly: System.Reflection.AssemblyTitleAttribute("nomad_gis_V2")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
