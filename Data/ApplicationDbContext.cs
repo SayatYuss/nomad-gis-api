@@ -15,6 +15,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<MapPoint> MapPoints { get; set; } = null!;
     public DbSet<Message> Messages { get; set; } = null!;
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public DbSet<MessageLike> MessageLikes { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -91,6 +92,20 @@ public class ApplicationDbContext : DbContext
                 .WithMany(p => p.Messages) // <-- ИЗМЕНЕНО (вместо .WithMany())
                 .HasForeignKey(m => m.MapPointId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasMany(m => m.Likes)
+                .WithOne(l => l.Message)
+                .HasForeignKey(l => l.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ---- MESSAGE LIKES ----
+        modelBuilder.Entity<MessageLike>(b =>
+        {
+            b.HasOne(l => l.User)
+                .WithMany() // У User нет обратной коллекции лайков, поэтому WithMany() пустой
+                .HasForeignKey(l => l.UserId)
+                .OnDelete(DeleteBehavior.Cascade); // При удалении пользователя - удалить все его лайки
         });
 
         // ---- REFRESH TOKENS ----

@@ -44,11 +44,12 @@ namespace nomad_gis_V2.Services
             };
         }
 
-        public async Task<IEnumerable<MessageResponse>> GetMessagesByPointIdAsync(Guid mapPointId)
+        public async Task<IEnumerable<MessageResponse>> GetMessagesByPointIdAsync(Guid mapPointId, Guid currentUserId)
         {
             var messages = await _context.Messages
                 .Where(m => m.MapPointId == mapPointId)
                 .Include(m => m.User)
+                .Include(m => m.Likes)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
 
@@ -59,7 +60,9 @@ namespace nomad_gis_V2.Services
                 CreatedAt = m.CreatedAt,
                 UserId = m.UserId,
                 Username = m.User.Username,
-                MapPointId = m.MapPointId
+                MapPointId = m.MapPointId,
+                LikesCount = m.Likes.Count,
+                IsLiketByCurrentUser = m.Likes.Any(l => l.UserId == currentUserId)
             });
         }
 
@@ -85,6 +88,32 @@ namespace nomad_gis_V2.Services
             }
 
             _context.Messages.Remove(message);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ToggleLikeAsync(Guid messageId, Guid userId)
+        {
+            var message = await _context.Messages.FindAsync(messageId);
+            if (message == null) throw new Exception("Message not found!");
+
+            var existingLike = await _context.MessageLikes
+                .FindAsync(userId, messageId);
+
+            if (existingLike != null)
+            {
+                _context.MessageLikes.Remove(existingLike);
+                await _context.SaveChangesAsync();
+                return false;
+            }
+
+            var newLike = new MessageLike
+            {
+                UserId = userId,
+                MessageId = messageId
+            };
+
+            _context.MessageLikes.Add(newLike);
             await _context.SaveChangesAsync();
             return true;
         }

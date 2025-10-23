@@ -22,7 +22,8 @@ namespace nomad_gis_V2.Controllers
         [HttpGet("point/{pointId}")]
         public async Task<IActionResult> GetMessagesByPointId(Guid pointId)
         {
-            var messages = await _messageService.GetMessagesByPointIdAsync(pointId);
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var messages = await _messageService.GetMessagesByPointIdAsync(pointId, userId);
             return Ok(messages);
         }
 
@@ -53,11 +54,21 @@ namespace nomad_gis_V2.Controllers
         {
             // Этот метод удаляет сообщение, не проверяя, кто автор
             var success = await _messageService.AdminDeleteMessageAsync(id);
-            
+
             if (!success)
                 throw new NotFoundException("Message not found.");
 
             return Ok(new { message = "Message deleted by admin" });
+        }
+        
+        [HttpPost("{id}/like")]
+        public async Task<IActionResult> LikeMessage(Guid id)
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            bool isLiked = await _messageService.ToggleLikeAsync(id, userId);
+            
+            return Ok(new { isLiked = isLiked });
         }
     }
 }

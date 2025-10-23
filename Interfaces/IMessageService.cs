@@ -5,8 +5,11 @@ namespace nomad_gis_V2.Interfaces;
 public interface IMessageService
 {
     Task<MessageResponse> CreateMessageAsync(Guid userId, MessageRequest request);
-    Task<IEnumerable<MessageResponse>> GetMessagesByPointIdAsync(Guid mapPointId);
+    Task<IEnumerable<MessageResponse>> GetMessagesByPointIdAsync(Guid mapPointId, Guid currentUserId);
     Task<bool> DeleteMessageAsync(Guid messageId, Guid userId);
     Task<bool> AdminDeleteMessageAsync(Guid messageId);
+
+    Task<bool> ToggleLikeAsync(Guid messageId, Guid userId);
+
 }
 

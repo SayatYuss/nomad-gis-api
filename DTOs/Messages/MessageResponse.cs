@@ -10,4 +10,6 @@ public class MessageResponse
     public string Username { get; set; } = string.Empty;
 
     public Guid MapPointId { get; set; }
+    public int LikesCount { get; set; }
+    public bool IsLiketByCurrentUser { get; set; }
 }
