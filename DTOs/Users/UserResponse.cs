@@ -8,5 +8,6 @@ namespace nomad_gis_V2.DTOs.Users
         public string Role { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
+        public string? AvatarUrl { get; set; }
     }
 }

@@ -36,6 +36,7 @@ public class ProfileController : ControllerBase
         {
             Id = user.Id,
             Username = user.Username,
+            AvatarUrl = user.AvatarUrl,
             Experience = user.Experience,
             Level = user.Level
         });

@@ -32,6 +32,7 @@ namespace nomad_gis_V2.Controllers
                     Id = u.Id,
                     Username = u.Username,
                     Email = u.Email,
+                    AvatarUrl = u.AvatarUrl,
                     Role = u.Role,
                     CreatedAt = u.CreatedAt,
                     IsActive = u.IsActive

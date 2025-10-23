@@ -32,13 +32,14 @@ public class LeaderboardController : ControllerBase
 
         // 2. Теперь, в памяти, добавляем ранг
         var leaderboard = users.Select((u, index) => new LeaderboardEntryDto
-            {
-                Rank = index + 1,
-                UserId = u.Id,
-                Username = u.Username,
-                Level = u.Level,
-                Score = u.Experience
-            }).ToList(); // <-- Используем .ToList() т.к. 'users' уже в памяти
+        {
+            Rank = index + 1,
+            UserId = u.Id,
+            AvatarUrl = u.AvatarUrl,
+            Username = u.Username,
+            Level = u.Level,
+            Score = u.Experience
+        }).ToList(); // <-- Используем .ToList() т.к. 'users' уже в памяти
 
         return Ok(leaderboard);
     }
@@ -67,13 +68,14 @@ public class LeaderboardController : ControllerBase
 
         // 2. Теперь, в памяти, добавляем ранг
         var leaderboard = sortedData.Select((data, index) => new LeaderboardEntryDto
-            {
-                Rank = index + 1,
-                UserId = data.user.Id,
-                Username = data.user.Username,
-                Level = data.user.Level,
-                Score = data.entry.Score
-            })
+        {
+            Rank = index + 1,
+            UserId = data.user.Id,
+            AvatarUrl = data.user.AvatarUrl,
+            Username = data.user.Username,
+            Level = data.user.Level,
+            Score = data.entry.Score
+        })
             .ToList(); // <-- Используем .ToList()
 
         return Ok(leaderboard);
@@ -104,13 +106,14 @@ public class LeaderboardController : ControllerBase
 
         // 2. Теперь, в памяти, добавляем ранг
         var leaderboard = sortedData.Select((data, index) => new LeaderboardEntryDto
-            {
-                Rank = index + 1,
-                UserId = data.user.Id,
-                Username = data.user.Username,
-                Level = data.user.Level,
-                Score = data.entry.Score
-            })
+        {
+            Rank = index + 1,
+            UserId = data.user.Id,
+            AvatarUrl = data.user.AvatarUrl,
+            Username = data.user.Username,
+            Level = data.user.Level,
+            Score = data.entry.Score
+        })
             .ToList(); // <-- Используем .ToList()
 
         return Ok(leaderboard);

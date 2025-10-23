@@ -119,6 +119,7 @@ public class AuthService : IAuthService
                 Id = user.Id,
                 Email = user.Email,
                 Username = user.Username,
+                AvatarUrl = user.AvatarUrl,
                 Experience = user.Experience,
                 Level = user.Level
             }
@@ -161,6 +162,7 @@ public class AuthService : IAuthService
                 Id = user.Id,
                 Email = user.Email,
                 Username = user.Username,
+                AvatarUrl = user.AvatarUrl,
                 Experience = user.Experience,
                 Level = user.Level
             }
