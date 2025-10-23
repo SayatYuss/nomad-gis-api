@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using nomad_gis_V2.DTOs.Achivements;
+using nomad_gis_V2.DTOs.Achievements;
 using nomad_gis_V2.Interfaces;
 
 namespace nomad_gis_V2.Controllers;

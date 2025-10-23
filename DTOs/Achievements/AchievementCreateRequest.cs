@@ -1,4 +1,4 @@
-namespace nomad_gis_V2.DTOs.Achivements;
+namespace nomad_gis_V2.DTOs.Achievements;
 
 
 public class AchievementCreateRequest

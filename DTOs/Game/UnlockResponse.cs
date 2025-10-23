@@ -1,3 +1,5 @@
+using nomad_gis_V2.DTOs.Achievements;
+
 namespace nomad_gis_V2.DTOs.Game;
 public class UnlockResponse
 {
@@ -5,4 +7,5 @@ public class UnlockResponse
     public string Message { get; set; } = string.Empty;
     public Guid? UnlockedPointId { get; set; }
     public int ExperienceGained { get; set; } = 0;
+    public List<AchievementResponse> unblockedAchievemnts { get; set; } = new();
 }

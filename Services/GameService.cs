@@ -1,5 +1,7 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using nomad_gis_V2.Data;
+using nomad_gis_V2.DTOs.Achievements;
 using nomad_gis_V2.DTOs.Game;
 using nomad_gis_V2.Interfaces;
 using nomad_gis_V2.Models;
@@ -9,9 +11,13 @@ namespace nomad_gis_V2.Services;
 public class GameService : IGameService
 {
     private readonly ApplicationDbContext _context;
-    public GameService(ApplicationDbContext context)
+    private readonly IAchievementService _achievementService;
+    private readonly IMapper _mapper;
+    public GameService(ApplicationDbContext context, IAchievementService achievementService, IMapper mapper)
     {
         _context = context;
+        _achievementService = achievementService;
+        _mapper = mapper;
     }
     public async Task<UnlockResponse> CheckAndUnlockPointsAsync(Guid userId, CheckLocationRequest request)
     {
@@ -28,18 +34,12 @@ public class GameService : IGameService
             .Where(p => !unlockedPointIds.Contains(p.Id)) 
             .ToListAsync();
 
-        // 3. Перебираем только 950 точек
         foreach (var point in potentialPointsToUnlock)
         {
-            // 5b. Считаем расстояние
             var distance = CalculateDistance(request.Latitude, request.Longitude, point.Latitude, point.Longitude);
             System.Console.WriteLine($"Distance to point {point.Name}: {distance} meters");
-            // 5c. Проверяем радиус
             if (distance <= point.UnlockRadiusMeters)
             {
-                // УСПЕХ! Пользователь в зоне
-
-                // 1. Создаем запись о прогрессе
                 var progress = new UserMapProgress
                 {
                     UserId = userId,
@@ -48,12 +48,13 @@ public class GameService : IGameService
                 };
                 _context.UserMapProgress.Add(progress);
 
-                // 2. Начисляем опыт (п. 4)
                 int expGained = 100; // Допустим, 100 очков за точку
                 user.Experience += expGained;
 
-                // 3. (Позже) Проверяем ачивки (п. 3)
-                // await _achievementService.CheckForUnlockAchievements(user);
+                var newAchievemnts = await _achievementService.CheckUnlockAchievementsAsync(user, point);
+
+                int achievementsExp = newAchievemnts.Sum(a => a.RewardPoints);
+                int totalExpGained = expGained + achievementsExp;
 
                 // 4. Сохраняем и выходим
                 await _context.SaveChangesAsync();
@@ -63,7 +64,8 @@ public class GameService : IGameService
                     Success = true,
                     Message = $"Вы открыли точку: {point.Name}!",
                     UnlockedPointId = point.Id,
-                    ExperienceGained = expGained
+                    ExperienceGained = totalExpGained,
+                    unblockedAchievemnts = _mapper.Map<List<AchievementResponse>>(newAchievemnts)
                 };
             }
         }
