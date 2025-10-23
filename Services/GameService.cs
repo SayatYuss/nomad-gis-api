@@ -51,6 +51,8 @@ public class GameService : IGameService
                 int expGained = 100; // Допустим, 100 очков за точку
                 user.Experience += expGained;
 
+                await _context.SaveChangesAsync();
+
                 var newAchievemnts = await _achievementService.CheckUnlockAchievementsAsync(user, point);
 
                 int achievementsExp = newAchievemnts.Sum(a => a.RewardPoints);
@@ -65,7 +67,7 @@ public class GameService : IGameService
                     Message = $"Вы открыли точку: {point.Name}!",
                     UnlockedPointId = point.Id,
                     ExperienceGained = totalExpGained,
-                    unblockedAchievemnts = _mapper.Map<List<AchievementResponse>>(newAchievemnts)
+                    unlockedAchievemnts = _mapper.Map<List<AchievementResponse>>(newAchievemnts)
                 };
             }
         }

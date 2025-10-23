@@ -16,12 +16,14 @@ namespace nomad_gis_V2.Controllers;
 public class ProfileController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    public ProfileController(ApplicationDbContext context)
+    private readonly IWebHostEnvironment _env;
+    public ProfileController(ApplicationDbContext context, IWebHostEnvironment env)
     {
         _context = context;
+        _env = env;
     }
 
-    [HttpGet("/me")]
+    [HttpGet("me")]
     public async Task<ActionResult<UserDto>> UserProfile()
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -50,7 +52,7 @@ public class ProfileController : ControllerBase
         return Ok(progress);
     }
 
-    [HttpGet("/my-achievements")]
+    [HttpGet("my-achievements")]
     public async Task<ActionResult<List<AchievementResponse>>> UserAchievemnts()
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -60,5 +62,53 @@ public class ProfileController : ControllerBase
             throw new Exception("error");
 
         return Ok(user.UserAchievements);
+    }
+
+    [HttpPost("avatar")]
+    [RequestSizeLimit(5_000_000)] // Ограничение 5MB
+    public async Task<IActionResult> UploadAvatar(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { message = "No file uploaded." });
+        }
+
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            return NotFound(new { message = "User not found" });
+        }
+
+        // 1. Создаем путь к папке (wwwroot/avatars)
+        // _env.WebRootPath указывает на папку 'wwwroot'
+        var avatarsPath = Path.Combine(_env.WebRootPath, "avatars");
+        if (!Directory.Exists(avatarsPath))
+        {
+            Directory.CreateDirectory(avatarsPath);
+        }
+
+        // 2. Генерируем уникальное имя файла
+        // (Например: 123e4567-e89b-12d3-a456-426614174000.jpg)
+        var fileExtension = Path.GetExtension(file.FileName);
+        var uniqueFileName = $"{user.Id}{fileExtension}";
+        var filePath = Path.Combine(avatarsPath, uniqueFileName);
+
+        // 3. Сохраняем файл на диск
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        // 4. Генерируем публичный URL
+        // (Ваш API должен быть доступен по http/https)
+        var request = HttpContext.Request;
+        var publicUrl = $"{request.Scheme}://{request.Host}/avatars/{uniqueFileName}";
+
+        // 5. Сохраняем URL в базу
+        user.AvatarUrl = publicUrl;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { avatarUrl = publicUrl });
     }
 }

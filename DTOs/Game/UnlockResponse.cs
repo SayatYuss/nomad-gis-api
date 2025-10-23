@@ -7,5 +7,5 @@ public class UnlockResponse
     public string Message { get; set; } = string.Empty;
     public Guid? UnlockedPointId { get; set; }
     public int ExperienceGained { get; set; } = 0;
-    public List<AchievementResponse> unblockedAchievemnts { get; set; } = new();
+    public List<AchievementResponse> unlockedAchievemnts { get; set; } = new();
 }

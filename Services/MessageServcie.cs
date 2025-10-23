@@ -62,7 +62,7 @@ namespace nomad_gis_V2.Services
                 Username = m.User.Username,
                 MapPointId = m.MapPointId,
                 LikesCount = m.Likes.Count,
-                IsLiketByCurrentUser = m.Likes.Any(l => l.UserId == currentUserId)
+                IsLikedByCurrentUser = m.Likes.Any(l => l.UserId == currentUserId)
             });
         }
 

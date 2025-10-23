@@ -14,4 +14,5 @@ public class UserDto
     public string Username { get; set; } = string.Empty;
     public int Experience { get; set; }
     public int Level { get; set; }
+    public string? AvatarUrl { get; set; }
 }

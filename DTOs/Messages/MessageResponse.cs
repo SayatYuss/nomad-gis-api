@@ -8,8 +8,9 @@ public class MessageResponse
 
     public Guid UserId { get; set; }
     public string Username { get; set; } = string.Empty;
+    public string? AvatarUrl { get; set; }
 
     public Guid MapPointId { get; set; }
     public int LikesCount { get; set; }
-    public bool IsLiketByCurrentUser { get; set; }
+    public bool IsLikedByCurrentUser { get; set; }
 }

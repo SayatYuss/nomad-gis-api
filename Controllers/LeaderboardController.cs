@@ -20,21 +20,25 @@ public class LeaderboardController : ControllerBase
 
     ///<summary>
     /// Рейтинг по опыту
-    /// </summary
+    /// </summary>
     [HttpGet("experience")]
     public async Task<IActionResult> GetExperienceLeaderboard()
     {
-        var leaderboard = await _context.Users
+        // 1. Сначала получаем данные из БД
+        var users = await _context.Users
             .OrderByDescending(u => u.Experience)
             .Take(10)
-            .Select((u, index) => new LeaderboardEntryDto
+            .ToListAsync(); // <-- Выполняем запрос к БД
+
+        // 2. Теперь, в памяти, добавляем ранг
+        var leaderboard = users.Select((u, index) => new LeaderboardEntryDto
             {
                 Rank = index + 1,
                 UserId = u.Id,
                 Username = u.Username,
                 Level = u.Level,
                 Score = u.Experience
-            }).ToListAsync();
+            }).ToList(); // <-- Используем .ToList() т.к. 'users' уже в памяти
 
         return Ok(leaderboard);
     }
@@ -45,7 +49,8 @@ public class LeaderboardController : ControllerBase
     [HttpGet("points")]
     public async Task<IActionResult> GetPointsLeaderboard()
     {
-        var leaderboard = await _context.UserMapProgress
+        // 1. Сначала получаем данные из БД
+        var sortedData = await _context.UserMapProgress
             .GroupBy(p => p.UserId) // Группируем по ID пользователя
             .Select(g => new 
             {
@@ -53,12 +58,15 @@ public class LeaderboardController : ControllerBase
                 Score = g.Count() // Считаем кол-во записей (открытых точек)
             })
             .OrderByDescending(x => x.Score)
-            .Take(50)
+            .Take(10)
             .Join(_context.Users, // Присоединяем инфо о пользователе
                 entry => entry.UserId,
                 user => user.Id,
                 (entry, user) => new { entry, user })
-            .Select((data, index) => new LeaderboardEntryDto
+            .ToListAsync(); // <-- Выполняем запрос к БД
+
+        // 2. Теперь, в памяти, добавляем ранг
+        var leaderboard = sortedData.Select((data, index) => new LeaderboardEntryDto
             {
                 Rank = index + 1,
                 UserId = data.user.Id,
@@ -66,7 +74,7 @@ public class LeaderboardController : ControllerBase
                 Level = data.user.Level,
                 Score = data.entry.Score
             })
-            .ToListAsync();
+            .ToList(); // <-- Используем .ToList()
 
         return Ok(leaderboard);
     }
@@ -77,7 +85,8 @@ public class LeaderboardController : ControllerBase
     [HttpGet("achievements")]
     public async Task<IActionResult> GetAchievementsLeaderboard()
     {
-        var leaderboard = await _context.UserAchievements
+        // 1. Сначала получаем данные из БД
+        var sortedData = await _context.UserAchievements
             .Where(ua => ua.IsCompleted) // Считаем только завершенные
             .GroupBy(ua => ua.UserId)
             .Select(g => new 
@@ -86,12 +95,15 @@ public class LeaderboardController : ControllerBase
                 Score = g.Count() // Считаем кол-во ачивок
             })
             .OrderByDescending(x => x.Score)
-            .Take(50)
+            .Take(10)
             .Join(_context.Users, 
                 entry => entry.UserId,
                 user => user.Id,
                 (entry, user) => new { entry, user })
-            .Select((data, index) => new LeaderboardEntryDto
+            .ToListAsync(); // <-- Выполняем запрос к БД
+
+        // 2. Теперь, в памяти, добавляем ранг
+        var leaderboard = sortedData.Select((data, index) => new LeaderboardEntryDto
             {
                 Rank = index + 1,
                 UserId = data.user.Id,
@@ -99,7 +111,7 @@ public class LeaderboardController : ControllerBase
                 Level = data.user.Level,
                 Score = data.entry.Score
             })
-            .ToListAsync();
+            .ToList(); // <-- Используем .ToList()
 
         return Ok(leaderboard);
     }
