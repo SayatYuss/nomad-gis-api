@@ -5,7 +5,7 @@ using nomad_gis_V2.Models;
 
 namespace nomad_gis_V2.Helpers
 {
-    public class MappingProfile : Profile
+    public class MappingProfile : AutoMapper.Profile
     {
         public MappingProfile()
         {
