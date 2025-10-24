@@ -44,7 +44,8 @@ public class AuthService : IAuthService
             Username = request.Username,
             Email = request.Email,
             IsActive = true,
-            Role = "User" // <-- ДОБАВЛЕНО: Явно указываем роль при регистрации
+            Role = "User", // <-- ДОБАВЛЕНО: Явно указываем роль при регистрации
+            AvatarUrl = "http://localhost:5015/avatars/default.jpg"
         };
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);

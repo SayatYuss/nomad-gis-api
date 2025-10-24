@@ -197,7 +197,7 @@ public class ProfileController : ControllerBase
             }
 
             var httpReq = HttpContext.Request;
-            var publicUrl = $"{httpReq.Scheme}://{httpReq.Host}/avatars/{uniqueFileName}";
+            var publicUrl = $"{httpReq.Scheme}://192.168.1.68:5015/avatars/{uniqueFileName}";
 
             user.AvatarUrl = publicUrl;
             hasChanges = true;
