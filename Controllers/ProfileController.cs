@@ -21,11 +21,13 @@ public class ProfileController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _env;
     private readonly IPasswordHasher<User> _passwordHasher;
-    public ProfileController(ApplicationDbContext context, IWebHostEnvironment env, IPasswordHasher<User> passwordHasher)
+    private readonly ILogger<ProfileController> _logger;
+    public ProfileController(ApplicationDbContext context, IWebHostEnvironment env, IPasswordHasher<User> passwordHasher, ILogger<ProfileController> logger)
     {
         _context = context;
         _env = env;
         _passwordHasher = passwordHasher;
+        _logger = logger;
     }
 
     [HttpGet("me")]
@@ -92,6 +94,20 @@ public class ProfileController : ControllerBase
             Directory.CreateDirectory(avatarsPath);
         }
 
+        string[] existingFiles = Directory.GetFiles(avatarsPath, $"{user.Id}.*");
+            
+        foreach (var fileToDelete in existingFiles)
+        {
+            try
+            {
+                System.IO.File.Delete(fileToDelete);
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, $"Could not delete old avatar: {fileToDelete}");
+            }
+        }
+
         var fileExtension = Path.GetExtension(file.FileName);
         var uniqueFileName = $"{user.Id}{fileExtension}";
         var filePath = Path.Combine(avatarsPath, uniqueFileName);
@@ -155,6 +171,20 @@ public class ProfileController : ControllerBase
             if (!Directory.Exists(avatarsPath))
             {
                 Directory.CreateDirectory(avatarsPath);
+            }
+
+            string[] existingFiles = Directory.GetFiles(avatarsPath, $"{user.Id}.*");
+            
+            foreach (var fileToDelete in existingFiles)
+            {
+                try
+                {
+                    System.IO.File.Delete(fileToDelete);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, $"Could not delete old avatar: {fileToDelete}");
+                }
             }
 
             var fileExtension = Path.GetExtension(request.AvatarFile.FileName);
