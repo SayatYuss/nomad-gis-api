@@ -97,6 +97,8 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+Console.WriteLine("📡 Connection: " + builder.Configuration.GetConnectionString("DefaultConnection"));
+
 // ========== Автоматическое применение миграций (Render-friendly) ==========
 using (var scope = app.Services.CreateScope())
 {
