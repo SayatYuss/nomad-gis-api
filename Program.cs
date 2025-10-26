@@ -110,15 +110,14 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        // Проверим, существует ли таблица "Users"
-        var result = await db.Database
-            .ExecuteSqlRawAsync("SELECT 1 FROM pg_tables WHERE tablename = 'Users';");
-
-        if (result > 0)
+        var config = services.GetRequiredService<IConfiguration>();
+        if (db.Database.CanConnect())
         {
-            var config = services.GetRequiredService<IConfiguration>();
-            await DataSeeder.SeedAdminUser(services, config);
-            logger.LogInformation("Admin user seeded/checked ✅");
+            var hasUsers = await db.Users.AnyAsync();
+            if (!hasUsers)
+            {
+                await DataSeeder.SeedAdminUser(services, config);
+            }
         }
         else
         {
