@@ -102,7 +102,6 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
-    var env = services.GetRequiredService<IHostEnvironment>();
 
     try
     {
@@ -112,20 +111,27 @@ using (var scope = app.Services.CreateScope())
         await dbContext.Database.MigrateAsync();
         logger.LogInformation("Migrations applied successfully ✅");
 
-        // Только если нужно — создаем админа
-        if (env.IsDevelopment() || env.IsProduction())
+        // Проверим, существует ли таблица "Users"
+        var result = await dbContext.Database
+            .ExecuteSqlRawAsync("SELECT 1 FROM pg_tables WHERE tablename = 'Users';");
+
+        if (result > 0)
         {
             var config = services.GetRequiredService<IConfiguration>();
             await DataSeeder.SeedAdminUser(services, config);
             logger.LogInformation("Admin user seeded/checked ✅");
         }
+        else
+        {
+            logger.LogWarning("⚠️ Таблица 'Users' не найдена, пропускаем сидинг.");
+        }
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "Error applying migrations or seeding data ❌");
-        // Лучше не кидать исключение — Render перезапустит контейнер сам
     }
 }
+
 
 // ========== Middleware ==========
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
