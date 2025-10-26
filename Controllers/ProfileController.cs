@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Identity;
 using nomad_gis_V2.Models;
 using nomad_gis_V2.Profile;
 using nomad_gis_V2.Exceptions;
+using Amazon.S3;
+using Amazon.S3.Model;
 
 namespace nomad_gis_V2.Controllers;
 
@@ -19,17 +21,25 @@ namespace nomad_gis_V2.Controllers;
 public class ProfileController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    private readonly IWebHostEnvironment _env;
     private readonly IPasswordHasher<User> _passwordHasher;
     private readonly ILogger<ProfileController> _logger;
-    public ProfileController(ApplicationDbContext context, IWebHostEnvironment env, IPasswordHasher<User> passwordHasher, ILogger<ProfileController> logger)
+    private readonly IAmazonS3 _s3Client;
+    private readonly IConfiguration _config;
+
+
+    // Обновите конструктор
+    public ProfileController(ApplicationDbContext context, 
+                             IPasswordHasher<User> passwordHasher, 
+                             ILogger<ProfileController> logger,
+                             IAmazonS3 s3Client,
+                             IConfiguration config)
     {
         _context = context;
-        _env = env;
         _passwordHasher = passwordHasher;
         _logger = logger;
+        _s3Client = s3Client; 
+        _config = config; 
     }
-
     [HttpGet("me")]
     public async Task<ActionResult<UserDto>> UserProfile()
     {
@@ -88,42 +98,55 @@ public class ProfileController : ControllerBase
             return NotFound(new { message = "User not found" });
         }
 
-        var avatarsPath = Path.Combine(_env.WebRootPath, "avatars");
-        if (!Directory.Exists(avatarsPath))
-        {
-            Directory.CreateDirectory(avatarsPath);
-        }
-
-        string[] existingFiles = Directory.GetFiles(avatarsPath, $"{user.Id}.*");
-            
-        foreach (var fileToDelete in existingFiles)
-        {
-            try
-            {
-                System.IO.File.Delete(fileToDelete);
-            }
-            catch (IOException ex)
-            {
-                _logger.LogWarning(ex, $"Could not delete old avatar: {fileToDelete}");
-            }
-        }
-
+        var bucketName = _config["R2Storage:BucketName"];
+        var publicUrlBase = _config["R2Storage:PublicUrlBase"];
         var fileExtension = Path.GetExtension(file.FileName);
         var uniqueFileName = $"{user.Id}{fileExtension}";
-        var filePath = Path.Combine(avatarsPath, uniqueFileName);
 
-        using (var stream = new FileStream(filePath, FileMode.Create))
+        try
         {
-            await file.CopyToAsync(stream);
+            // 1. Если у юзера уже есть аватар, удаляем старый из R2
+            if (!string.IsNullOrEmpty(user.AvatarUrl))
+            {
+                try
+                {
+                    var oldKey = Path.GetFileName(new Uri(user.AvatarUrl).LocalPath);
+                    await _s3Client.DeleteObjectAsync(bucketName, oldKey);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not delete old avatar from R2: {OldUrl}", user.AvatarUrl);
+                }
+            }
+
+            await using var stream = file.OpenReadStream();
+            var putRequest = new PutObjectRequest
+            {
+                BucketName = bucketName,
+                Key = uniqueFileName,
+                InputStream = stream,
+                ContentType = file.ContentType,
+                
+                // --- РЕШЕНИЕ ИЗ ДОКУМЕНТАЦИИ CLOUDFLARE ---
+                DisablePayloadSigning = true,
+                DisableDefaultChecksumValidation = true
+                // --- КОНЕЦ ---
+            };
+
+            var response = await _s3Client.PutObjectAsync(putRequest);
+
+            var publicUrl = $"{publicUrlBase?.TrimEnd('/')}/{uniqueFileName}";
+
+            user.AvatarUrl = publicUrl;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { avatarUrl = publicUrl });
         }
-
-        var request = HttpContext.Request;
-        var publicUrl = $"{request.Scheme}://{request.Host}/avatars/{uniqueFileName}";
-
-        user.AvatarUrl = publicUrl;
-        await _context.SaveChangesAsync();
-
-        return Ok(new { avatarUrl = publicUrl });
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading avatar to R2 for user {UserId}", userId);
+            return StatusCode(500, new { message = "Error uploading file." });
+        }
     }
 
     [HttpPut("me")]
@@ -167,40 +190,57 @@ public class ProfileController : ControllerBase
 
         if (request.AvatarFile != null && request.AvatarFile.Length > 0)
         {
-            var avatarsPath = Path.Combine(_env.WebRootPath, "avatars");
-            if (!Directory.Exists(avatarsPath))
-            {
-                Directory.CreateDirectory(avatarsPath);
-            }
-
-            string[] existingFiles = Directory.GetFiles(avatarsPath, $"{user.Id}.*");
-            
-            foreach (var fileToDelete in existingFiles)
-            {
-                try
-                {
-                    System.IO.File.Delete(fileToDelete);
-                }
-                catch (IOException ex)
-                {
-                    _logger.LogWarning(ex, $"Could not delete old avatar: {fileToDelete}");
-                }
-            }
-
+            // --- ЛОГИКА R2 ---
+            var bucketName = _config["R2Storage:BucketName"];
+            var publicUrlBase = _config["R2Storage:PublicUrlBase"];
             var fileExtension = Path.GetExtension(request.AvatarFile.FileName);
-            var uniqueFileName = $"{user.Id}{fileExtension}";
-            var filePath = Path.Combine(avatarsPath, uniqueFileName);
+            var uniqueFileName = $"{user.Id}{fileExtension}"; // Key
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            try
             {
-                await request.AvatarFile.CopyToAsync(stream);
+                // 1. Удаляем старый файл, если он был
+                if (!string.IsNullOrEmpty(user.AvatarUrl))
+                {
+                    try
+                    {
+                        var oldKey = Path.GetFileName(new Uri(user.AvatarUrl).LocalPath);
+                        await _s3Client.DeleteObjectAsync(bucketName, oldKey);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Could not delete old avatar from R2: {OldUrl}", user.AvatarUrl);
+                    }
+                }
+
+                // 2. Загружаем новый
+                await using var stream = request.AvatarFile.OpenReadStream();
+                var putRequest = new PutObjectRequest
+                {
+                    BucketName = bucketName,
+                    Key = uniqueFileName,
+                    InputStream = stream,
+                    ContentType = request.AvatarFile.ContentType,
+                    
+                    // --- РЕШЕНИЕ ИЗ ДОКУМЕНТАЦИИ CLOUDFLARE ---
+                    DisablePayloadSigning = true,
+                    DisableDefaultChecksumValidation = true
+                    // --- КОНЕЦ ---
+                };
+
+                await _s3Client.PutObjectAsync(putRequest);
+
+                // 3. Формируем URL
+                var publicUrl = $"{publicUrlBase?.TrimEnd('/')}/{uniqueFileName}";
+                user.AvatarUrl = publicUrl;
+                hasChanges = true;
             }
-
-            var httpReq = HttpContext.Request;
-            var publicUrl = $"{httpReq.Scheme}://192.168.1.68:5015/avatars/{uniqueFileName}";
-
-            user.AvatarUrl = publicUrl;
-            hasChanges = true;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading avatar to R2 during profile update for user {UserId}", userId);
+                // Вы можете пробросить ошибку или вернуть BadRequest
+                throw new Exception("Error occurred while uploading new avatar.", ex);
+            }
+            // --- КОНЕЦ ЛОГИКИ R2 ---
         }
         
         if (hasChanges)

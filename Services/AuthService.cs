@@ -4,7 +4,8 @@ using nomad_gis_V2.Data;
 using nomad_gis_V2.DTOs.Auth;
 using nomad_gis_V2.Interfaces;
 using nomad_gis_V2.Models;
-using nomad_gis_V2.Exceptions; // <-- 1. ПОДКЛЮЧАЕМ ИСКЛЮЧЕНИЯ
+using nomad_gis_V2.Exceptions;
+using Amazon.S3; // <-- 1. ПОДКЛЮЧАЕМ ИСКЛЮЧЕНИЯ
 
 namespace nomad_gis_V2.Services;
 
@@ -13,15 +14,20 @@ public class AuthService : IAuthService
     private readonly ApplicationDbContext _context;
     private readonly JwtService _jwtService;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly IAmazonS3 _s3Client;
+    private readonly IConfiguration _config;
 
-    public AuthService(ApplicationDbContext context, JwtService jwtService, IPasswordHasher<User> passwordHasher)
+    public AuthService(ApplicationDbContext context, JwtService jwtService, IPasswordHasher<User> passwordHasher, IAmazonS3 s3Client, IConfiguration config)
     {
         _context = context;
         _jwtService = jwtService;
         _passwordHasher = passwordHasher;
+        _s3Client = s3Client;
+        _config = config;
+        
     }
 
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    public async Task<AuthResponse> RegisterAsync(RegisterRequest request, HttpContext httpContext)
     {
         // 2. Генерируем кастомные исключения
         if (request.Password != request.Password)
@@ -33,19 +39,22 @@ public class AuthService : IAuthService
         {
             throw new DuplicateException("User with this email already exists"); // <-- ИЗМЕНЕНО
         }
-        
+
         if (await _context.Users.AnyAsync(u => u.Username == request.Username))
         {
             throw new DuplicateException("User with this username already exists"); // <-- ИЗМЕНЕНО
         }
 
+        var httpReq = httpContext.Request;
+        var baseUrl = _config["R2Storage:PublicUrlBase"];
+        
         var user = new User
         {
             Username = request.Username,
             Email = request.Email,
             IsActive = true,
             Role = "User", // <-- ДОБАВЛЕНО: Явно указываем роль при регистрации
-            AvatarUrl = "http://localhost:5015/avatars/default.jpg"
+            AvatarUrl = $"{baseUrl?.TrimEnd('/')}/default.jpg"
         };
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);

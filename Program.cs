@@ -9,6 +9,8 @@ using nomad_gis_V2.Middleware;
 using nomad_gis_V2.Models;
 using nomad_gis_V2.Services;
 using System.Text;
+using Amazon.S3;
+using Amazon.Runtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,6 +42,25 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!))
     };
 });
+
+// ========== R2 setup ==========
+var r2Config = builder.Configuration.GetSection("R2Storage");
+var r2Settings = new {
+    ServiceURL = r2Config["ServiceURL"],
+    AccessKey = r2Config["AccessKey"],
+    SecretKey = r2Config["SecretKey"]
+};
+
+// Создаем учетные данные и конфигурацию клиента
+var credentials = new BasicAWSCredentials(r2Settings.AccessKey, r2Settings.SecretKey);
+var s3Config = new AmazonS3Config
+{
+    ServiceURL = r2Settings.ServiceURL, // <-- Указываем эндпоинт R2
+};
+
+// Регистрируем S3 клиент в DI
+builder.Services.AddSingleton<IAmazonS3>(new AmazonS3Client(credentials, s3Config));
+
 
 // ========== DI ==========
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -93,7 +114,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-
 var app = builder.Build();
 
 // ========== 2. ВЫЗОВ DATA SEEDER ==========
@@ -139,4 +159,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5015";
 app.Run();
+// app.Run($"0.0.0.0:{port}");

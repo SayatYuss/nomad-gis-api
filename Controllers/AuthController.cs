@@ -22,7 +22,8 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var result = await _authService.RegisterAsync(request);
+        var httpReq = HttpContext;
+        var result = await _authService.RegisterAsync(request, httpReq);
         return Ok(result);
     }
 
