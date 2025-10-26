@@ -165,8 +165,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAdminPanel");
 
-app.UseStaticFiles();
-
 // Включаем аутентификацию и авторизацию
 app.UseAuthentication();
 app.UseAuthorization();
