@@ -160,5 +160,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5015";
-app.Run();
-// app.Run($"0.0.0.0:{port}");
+// app.Run();
+app.Run($"0.0.0.0:{port}");
