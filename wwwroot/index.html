@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Админ-панель Nomad GIS</h1>
+        <button id="logout-button">Выйти</button>
+    </header>
+    
+    <nav>
+        <button class="tab-link active" data-tab="dashboard">Дашборд</button>
+        <button class="tab-link" data-tab="users">Пользователи</button>
+        <button class="tab-link" data-tab="points">Точки</button>
+        <button class="tab-link" data-tab="achievements">Достижения</button>
+        <button class="tab-link" data-tab="moderation">Модерация</button>
+    </nav>
+
+    <main>
+        <section id="dashboard-tab" class="tab-content active">
+            <h2>Сводка</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Пользователи</h3>
+                    <p id="stat-total-users">...</p>
+                    <small id="stat-new-users">... новых сегодня</small>
+                </div>
+                <div class="stat-card">
+                    <h3>Точки на карте</h3>
+                    <p id="stat-total-points">...</p>
+                    <small>Всего создано</small>
+                </div>
+                <div class="stat-card">
+                    <h3>Сообщения</h3>
+                    <p id="stat-total-messages">...</p>
+                    <small id="stat-new-messages">... новых сегодня</small>
+                </div>
+                 <div class="stat-card">
+                    <h3>Открытий точек</h3>
+                    <p id="stat-total-unlocks">...</p>
+                    <small>Всего открытий</small>
+                </div>
+                 <div class="stat-card">
+                    <h3>Выданных ачивок</h3>
+                    <p id="stat-total-achievements">...</p>
+                    <small>Всего получено</small>
+                </div>
+            </div>
+        </section>
+
+        <section id="users-tab" class="tab-content">
+            <h2>Управление пользователями</h2>
+            <div class="table-container" id="users-table-container">
+                </div>
+        </section>
+
+        <section id="points-tab" class="tab-content">
+            <h2>Управление точками</h2>
+            <button id="show-create-point-modal" class="btn-create">Создать точку</button>
+            <div class="table-container" id="points-table-container">
+                </div>
+        </section>
+
+        <section id="achievements-tab" class="tab-content">
+            <h2>Управление достижениями</h2>
+             <button id="show-create-achievement-modal" class="btn-create">Создать достижение</button>
+            <div class="table-container" id="achievements-table-container">
+                </div>
+        </section>
+
+        <section id="moderation-tab" class="tab-content">
+            <h2>Модерация сообщений</h2>
+            <div class="form-group">
+                <label for="point-select">Выберите точку для просмотра сообщений:</label>
+                <select id="point-select">
+                    <option value="">-- Загрузка точек... --</option>
+                </select>
+            </div>
+            <div class="table-container" id="messages-table-container">
+                <p class="placeholder-text">Выберите точку, чтобы увидеть сообщения.</p>
+            </div>
+        </section>
+
+        <div id="user-detail-modal" class="modal">
+            <div class="modal-content modal-lg">
+                <span class="close-btn" data-modal="user-detail-modal">&times;</span>
+                <h3 id="user-detail-title">Детали пользователя</h3>
+                
+                <div id="user-detail-content">
+                    <p>Загрузка...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="point-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" data-modal="point-modal">&times;</span>
+            <h3 id="point-modal-title">Создать точку</h3>
+            <form id="point-form">
+                <input type="hidden" id="point-id">
+                <div class="form-group">
+                    <label for="point-name">Название</label>
+                    <input type="text" id="point-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="point-lat">Latitude</label>
+                    <input type="number" step="any" id="point-lat" required>
+                </div>
+                <div class="form-group">
+                    <label for="point-lon">Longitude</label>
+                    <input type="number" step="any" id="point-lon" required>
+                </div>
+                <div class="form-group">
+                    <label for="point-radius">Радиус (метры)</label>
+                    <input type="number" id="point-radius" required>
+                </div>
+                <div class="form-group">
+                    <label for="point-desc">Описание</label>
+                    <textarea id="point-desc" rows="3"></textarea>
+                </div>
+                <button type="submit">Сохранить</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="achievement-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" data-modal="achievement-modal">&times;</span>
+            <h3 id="achievement-modal-title">Создать достижение</h3>
+            <form id="achievement-form">
+                <input type="hidden" id="achievement-id">
+                <div class="form-group">
+                    <label for="achievement-code">Код (напр. "OPEN_10_POINT")</label>
+                    <input type="text" id="achievement-code" required>
+                </div>
+                <div class="form-group">
+                    <label for="achievement-title">Название</label>
+                    <input type="text" id="achievement-title" required>
+                </div>
+                 <div class="form-group">
+                    <label for="achievement-desc">Описание</label>
+                    <textarea id="achievement-desc" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="achievement-reward">Очки награды</label>
+                    <input type="number" id="achievement-reward" required>
+                </div>
+                <div class="form-group">
+                    <label for="achievement-badge">Изображение (Badge)</label>
+                    <input type="file" id="achievement-badge" accept="image/png, image/jpeg, image/webp">
+                    <img id="achievement-badge-preview" src="" alt="Предпросмотр" class="badge-preview"/>
+                </div>
+                <button type="submit">Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

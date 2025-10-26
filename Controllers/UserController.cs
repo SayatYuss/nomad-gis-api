@@ -38,8 +38,59 @@ namespace nomad_gis_V2.Controllers
                     IsActive = u.IsActive
                 })
                 .ToListAsync();
-            
+
             return Ok(users);
+        }
+
+        /// <summary>
+        /// Получить детальную информацию о пользователе
+        /// </summary>
+        [HttpGet("{id}/details")]
+        public async Task<IActionResult> GetUserDetails(Guid id)
+        {
+            var user = await _context.Users
+                .AsNoTracking()
+                .Include(u => u.MapProgress) // Включаем прогресс по точкам
+                    .ThenInclude(mp => mp.MapPoint) // И саму информацию о точке
+                .Include(u => u.UserAchievements) // Включаем прогресс по ачивкам
+                    .ThenInclude(ua => ua.Achievement) // И саму информацию о ачивке
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null)
+            {
+                throw new NotFoundException("User not found");
+            }
+
+            // Маппим вручную в наш новый DTO
+            var userDetail = new UserDetailResponse
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt,
+                IsActive = user.IsActive,
+                AvatarUrl = user.AvatarUrl,
+                Level = user.Level,
+                Experience = user.Experience,
+
+                UnlockedPoints = user.MapProgress.Select(mp => new UserPointProgressDto
+                {
+                    MapPointId = mp.MapPointId,
+                    MapPointName = mp.MapPoint.Name,
+                    UnlockedAt = mp.UnlockedAt
+                }).OrderByDescending(p => p.UnlockedAt).ToList(),
+
+                Achievements = user.UserAchievements.Select(ua => new UserAchProgressDto
+                {
+                    AchievementId = ua.AchievementId,
+                    AchievementTitle = ua.Achievement.Title,
+                    IsCompleted = ua.IsCompleted,
+                    CompletedAt = ua.CompletedAt
+                }).OrderByDescending(a => a.CompletedAt).ToList()
+            };
+
+            return Ok(userDetail);
         }
 
         /// <summary>

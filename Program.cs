@@ -141,6 +141,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAdminPanel");
+
+app.UseDefaultFiles(); 
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

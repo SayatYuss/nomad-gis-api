@@ -7,4 +7,5 @@ public class AchievementResponse
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int RewardPoints { get; set; }
+    public string? BadgeImageUrl { get; set; }
 }

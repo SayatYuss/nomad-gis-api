@@ -7,4 +7,5 @@ public class AchievementCreateRequest
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int RewardPoints { get; set; }
+    public IFormFile? BadgeFile { get; set; }
 }

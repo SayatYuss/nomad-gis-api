@@ -33,7 +33,7 @@ public class AchievementsController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<AchievementResponse>> Create(AchievementCreateRequest request)
+    public async Task<ActionResult<AchievementResponse>> Create([FromForm] AchievementCreateRequest request)
     {
         var achievement = await _service.CreateAsync(request);
         return CreatedAtAction(nameof(Get), new { id = achievement.Id }, achievement);
@@ -41,7 +41,7 @@ public class AchievementsController : ControllerBase
 
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<AchievementResponse>> Update(Guid id, AchievementUpdateRequest request)
+    public async Task<ActionResult<AchievementResponse>> Update(Guid id, [FromForm] AchievementUpdateRequest request)
     {
         return Ok(await _service.UpdateAsync(id, request));
     }
