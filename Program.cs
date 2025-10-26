@@ -119,36 +119,56 @@ var app = builder.Build();
 // ========== 2. ВЫЗОВ DATA SEEDER ==========
 // (Лучше запускать только в Development-режиме, 
 // чтобы не проверять БД каждый раз в production)
-if (app.Environment.IsDevelopment()) 
+if (app.Environment.IsDevelopment())
 {
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            
-            try
-            {
-                // 1. ПОЛУЧАЕМ КОНТЕКСТ БД
-                var dbContext = services.GetRequiredService<ApplicationDbContext>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
 
-                // 2. ПРИМЕНЯЕМ МИГРАЦИИ
-                logger.LogInformation("Applying database migrations...");
-                await dbContext.Database.MigrateAsync();
-                logger.LogInformation("Database migrations applied successfully.");
+        try
+        {
+            // 1. ПОЛУЧАЕМ КОНТЕКСТ БД
+            var dbContext = services.GetRequiredService<ApplicationDbContext>();
 
-                // 3. ВЫЗЫВАЕМ DATA SEEDER ДЛЯ СОЗДАНИЯ АДМИНА
-                // (Это нужно, чтобы админ создался на чистой БД в Render)
-                logger.LogInformation("Checking/seeding admin user...");
-                var configuration = services.GetRequiredService<IConfiguration>();
-                await DataSeeder.SeedAdminUser(services, configuration);
-                logger.LogInformation("Admin user check/seed completed.");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred during database migration or seeding.");
-                // (Можно добавить throw, если вы хотите, чтобы приложение падало,
-                // если миграции не прошли)
-            }
+            // 2. ПРИМЕНЯЕМ МИГРАЦИИ
+            logger.LogInformation("Applying database migrations...");
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation("Database migrations applied successfully.");
+
+            // 3. ВЫЗЫВАЕМ DATA SEEDER ДЛЯ СОЗДАНИЯ АДМИНА
+            // (Это нужно, чтобы админ создался на чистой БД в Render)
+            logger.LogInformation("Checking/seeding admin user...");
+            var configuration = services.GetRequiredService<IConfiguration>();
+            await DataSeeder.SeedAdminUser(services, configuration);
+            logger.LogInformation("Admin user check/seed completed.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred during database migration or seeding.");
+            // (Можно добавить throw, если вы хотите, чтобы приложение падало,
+            // если миграции не прошли)
+        }
+    }
+}
+
+// ========== 2.1. ВЫЗОВ DATA SEEDER REALESE VER ==========
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        var dbContext = services.GetRequiredService<ApplicationDbContext>();
+        logger.LogInformation("Applying database migrations...");
+        await dbContext.Database.MigrateAsync();
+        logger.LogInformation("Database migrations applied successfully.");
+        // ... (остальной код сидера) ...
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred during database migration or seeding.");
     }
 }
 
