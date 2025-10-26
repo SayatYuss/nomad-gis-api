@@ -12,7 +12,7 @@ using nomad_gis_V2.Data;
 namespace nomad_gis_V2.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251026122951_InitialCreateRender")]
+    [Migration("20251026124915_InitialCreateRender")]
     partial class InitialCreateRender
     {
         /// <inheritdoc />
