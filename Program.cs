@@ -104,17 +104,14 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+
 
     try
     {
-        var dbContext = services.GetRequiredService<ApplicationDbContext>();
-
-        logger.LogInformation("Applying pending migrations...");
-        await dbContext.Database.MigrateAsync();
-        logger.LogInformation("Migrations applied successfully ✅");
-
         // Проверим, существует ли таблица "Users"
-        var result = await dbContext.Database
+        var result = await db.Database
             .ExecuteSqlRawAsync("SELECT 1 FROM pg_tables WHERE tablename = 'Users';");
 
         if (result > 0)
