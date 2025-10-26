@@ -29,7 +29,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // выключи, если используешь HTTPS — тогда поставь true
+    options.RequireHttpsMetadata = false; // для Render можно оставить false
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -43,24 +43,11 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ========== R2 setup ==========
+// ========== R2 Storage ==========
 var r2Config = builder.Configuration.GetSection("R2Storage");
-var r2Settings = new {
-    ServiceURL = r2Config["ServiceURL"],
-    AccessKey = r2Config["AccessKey"],
-    SecretKey = r2Config["SecretKey"]
-};
-
-// Создаем учетные данные и конфигурацию клиента
-var credentials = new BasicAWSCredentials(r2Settings.AccessKey, r2Settings.SecretKey);
-var s3Config = new AmazonS3Config
-{
-    ServiceURL = r2Settings.ServiceURL, // <-- Указываем эндпоинт R2
-};
-
-// Регистрируем S3 клиент в DI
+var credentials = new BasicAWSCredentials(r2Config["AccessKey"], r2Config["SecretKey"]);
+var s3Config = new AmazonS3Config { ServiceURL = r2Config["ServiceURL"] };
 builder.Services.AddSingleton<IAmazonS3>(new AmazonS3Client(credentials, s3Config));
-
 
 // ========== DI ==========
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -72,28 +59,22 @@ builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<IGameService, GameService>();
 
 // ========== CORS ==========
-// Добавляем политику CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAdminPanel",
-        builder =>
-        {
-            builder.AllowAnyOrigin() // Для разработки. В production укажи конкретный домен
-                   .AllowAnyMethod()
-                   .AllowAnyHeader();
-        });
+        builder => builder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader());
 });
 
-
-// ========== Контроллеры и Swagger ==========
+// ========== Controllers & Swagger ==========
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Nomad GIS API", Version = "v1" });
-
-    // Добавляем поддержку JWT в Swagger UI
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Введите JWT токен так: Bearer {your token}",
@@ -116,59 +97,33 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ========== 2. ВЫЗОВ DATA SEEDER ==========
-// (Лучше запускать только в Development-режиме, 
-// чтобы не проверять БД каждый раз в production)
-if (app.Environment.IsDevelopment())
-{
-    using (var scope = app.Services.CreateScope())
-    {
-        var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<Program>>();
-
-        try
-        {
-            // 1. ПОЛУЧАЕМ КОНТЕКСТ БД
-            var dbContext = services.GetRequiredService<ApplicationDbContext>();
-
-            // 2. ПРИМЕНЯЕМ МИГРАЦИИ
-            logger.LogInformation("Applying database migrations...");
-            await dbContext.Database.MigrateAsync();
-            logger.LogInformation("Database migrations applied successfully.");
-
-            // 3. ВЫЗЫВАЕМ DATA SEEDER ДЛЯ СОЗДАНИЯ АДМИНА
-            // (Это нужно, чтобы админ создался на чистой БД в Render)
-            logger.LogInformation("Checking/seeding admin user...");
-            var configuration = services.GetRequiredService<IConfiguration>();
-            await DataSeeder.SeedAdminUser(services, configuration);
-            logger.LogInformation("Admin user check/seed completed.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "An error occurred during database migration or seeding.");
-            // (Можно добавить throw, если вы хотите, чтобы приложение падало,
-            // если миграции не прошли)
-        }
-    }
-}
-
-// ========== 2.1. ВЫЗОВ DATA SEEDER REALESE VER ==========
+// ========== Автоматическое применение миграций (Render-friendly) ==========
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
-    
+    var env = services.GetRequiredService<IHostEnvironment>();
+
     try
     {
         var dbContext = services.GetRequiredService<ApplicationDbContext>();
-        logger.LogInformation("Applying database migrations...");
+
+        logger.LogInformation("Applying pending migrations...");
         await dbContext.Database.MigrateAsync();
-        logger.LogInformation("Database migrations applied successfully.");
-        // ... (остальной код сидера) ...
+        logger.LogInformation("Migrations applied successfully ✅");
+
+        // Только если нужно — создаем админа
+        if (env.IsDevelopment() || env.IsProduction())
+        {
+            var config = services.GetRequiredService<IConfiguration>();
+            await DataSeeder.SeedAdminUser(services, config);
+            logger.LogInformation("Admin user seeded/checked ✅");
+        }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred during database migration or seeding.");
+        logger.LogError(ex, "Error applying migrations or seeding data ❌");
+        // Лучше не кидать исключение — Render перезапустит контейнер сам
     }
 }
 
@@ -181,16 +136,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection();
-
 app.UseCors("AllowAdminPanel");
-
-// Включаем аутентификацию и авторизацию
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
-// var port = Environment.GetEnvironmentVariable("PORT") ?? "5015";
-// app.Run($"0.0.0.0:{port}");
