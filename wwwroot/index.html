@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
-    <link rel="stylesheet" href="css/style.css"> </head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
 <body>
     <header class="container">
         <nav>
@@ -54,12 +57,14 @@
 
         <article id="points-tab" class="tab-content" hidden>
             <header>
-                <h2>Управление точками</h2>
+                 <h2>Управление точками</h2>
                  <div class="grid">
                     <input type="search" id="point-search" name="search" placeholder="Поиск по названию...">
-                    <button id="show-create-point-modal">Создать точку</button>
-                 </div>
+                    <button id="show-create-point-modal" data-target="point-modal">Создать точку</button> </div>
             </header>
+
+            <div id="points-map-container" style="height: 400px; margin-bottom: var(--spacing);">
+                 <progress indeterminate></progress> </div>
             <figure>
                 <div class="table-container" id="points-table-container"> <progress indeterminate></progress> </div>
                 <footer class="pagination-controls" id="points-pagination"></footer>
@@ -105,6 +110,26 @@
                 <input type="hidden" id="point-id">
                 <label for="point-name">Название <input type="text" id="point-name" required> </label>
                 <div class="grid">
+                    <label for="point-lat">Latitude <input type="number" step="any" id="point-lat" required> </label>
+                    <label for="point-lon">Longitude <input type="number" step="any" id="point-lon" required> </label>
+                </div>
+                <label for="point-radius">Радиус (метры) <input type="number" id="point-radius" required> </label>
+                <label for="point-desc">Описание <textarea id="point-desc" rows="3"></textarea> </label>
+                <footer> <button type="submit">Сохранить</button> </footer>
+            </form>
+        </article>
+    </dialog>
+
+    <dialog id="point-modal">
+        <article>
+            <header> <a href="#close" aria-label="Close" class="close" data-target="point-modal"></a> <h3 id="point-modal-title">Точка</h3> </header>
+            <form id="point-form">
+                <input type="hidden" id="point-id">
+                <label for="point-name">Название <input type="text" id="point-name" required> </label>
+
+                <div id="point-modal-map" style="height: 250px; margin-bottom: var(--spacing); border-radius: var(--border-radius); border: 1px solid var(--muted-border-color);"></div>
+                 <small>Перетащите маркер для выбора координат.</small>
+                 <div class="grid">
                     <label for="point-lat">Latitude <input type="number" step="any" id="point-lat" required> </label>
                     <label for="point-lon">Longitude <input type="number" step="any" id="point-lon" required> </label>
                 </div>

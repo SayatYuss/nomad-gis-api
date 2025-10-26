@@ -123,9 +123,7 @@ article > header input[type="search"] { margin-bottom: 0;}
   /* Таблицы - делаем прокручиваемыми */
   /* Pico уже делает таблицы прокручиваемыми по умолчанию,
      но можно добавить рамку для наглядности */
-  figure > div.table-container {
-      /* border: 1px solid var(--muted-border-color); */ /* Раскомментируйте, если хотите рамку */
-  }
+  
 
   /* Карточки статистики - меньше колонок */
   .stats-grid {
@@ -180,3 +178,19 @@ article > header input[type="search"] { margin-bottom: 0;}
    }
 }
 /* ^-- КОНЕЦ НОВЫХ СТИЛЕЙ --^ */
+
+/* Стили для Leaflet карты */
+#points-map-container, #point-modal-map {
+    background-color: var(--muted-border-color); /* Фон во время загрузки тайлов */
+    z-index: 1; /* Чтобы была под модальными окнами */
+}
+
+/* Стиль для выделенного маркера (можно настроить) */
+.leaflet-marker-icon.highlighted-marker {
+  filter: hue-rotate(120deg) saturate(2); /* Делаем маркер зеленым */
+}
+
+table tbody tr.highlighted-row {
+    background-color: var(--primary-focus); /* Цвет фона при подсветке */
+    outline: 2px solid var(--primary); /* Рамка */
+}
