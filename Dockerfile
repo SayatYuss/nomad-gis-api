@@ -22,6 +22,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
+ENV ASPNETCORE_URLS=http://*:10000
+
 # Указываем, как запускать приложение
 # Docker-контейнер запустит ваш .NET-проект
 ENTRYPOINT ["dotnet", "nomad_gis_V2.dll"]

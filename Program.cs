@@ -124,17 +124,31 @@ if (app.Environment.IsDevelopment())
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
-        var configuration = services.GetRequiredService<IConfiguration>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        try
-        {
-            // Вызываем наш статический метод сидера
-            await DataSeeder.SeedAdminUser(services, configuration);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "An error occurred during admin user seeding.");
-        }
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            
+            try
+            {
+                // 1. ПОЛУЧАЕМ КОНТЕКСТ БД
+                var dbContext = services.GetRequiredService<ApplicationDbContext>();
+
+                // 2. ПРИМЕНЯЕМ МИГРАЦИИ
+                logger.LogInformation("Applying database migrations...");
+                await dbContext.Database.MigrateAsync();
+                logger.LogInformation("Database migrations applied successfully.");
+
+                // 3. ВЫЗЫВАЕМ DATA SEEDER ДЛЯ СОЗДАНИЯ АДМИНА
+                // (Это нужно, чтобы админ создался на чистой БД в Render)
+                logger.LogInformation("Checking/seeding admin user...");
+                var configuration = services.GetRequiredService<IConfiguration>();
+                await DataSeeder.SeedAdminUser(services, configuration);
+                logger.LogInformation("Admin user check/seed completed.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred during database migration or seeding.");
+                // (Можно добавить throw, если вы хотите, чтобы приложение падало,
+                // если миграции не прошли)
+            }
     }
 }
 
@@ -159,6 +173,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5015";
-// app.Run();
-app.Run($"0.0.0.0:{port}");
+app.Run();
+// var port = Environment.GetEnvironmentVariable("PORT") ?? "5015";
+// app.Run($"0.0.0.0:{port}");
