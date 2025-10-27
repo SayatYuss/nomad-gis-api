@@ -1,6 +1,6 @@
 import { initAuth, logout } from './modules/auth.js';
 import { initTabs, initModals } from './modules/ui.js'; // Добавили initModals
-import { loadDashboard } from './modules/dashboard.js';
+import { loadDashboard, initDashboard } from './modules/dashboard.js';
 import { initUsers } from './modules/users.js';
 import { initPoints } from './modules/points.js';
 import { initAchievements } from './modules/achievements.js';
@@ -18,8 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2. Инициализация UI (вкладки, модальные окна)
     initTabs();
-    initModals(); // <-- ВЫЗОВ ИНИЦИАЛИЗАЦИИ МОДАЛЬНЫХ ОКОН
-
+    initModals();
     // 3. Инициализация логики для каждой вкладки
     initDashboard();
     initUsers();

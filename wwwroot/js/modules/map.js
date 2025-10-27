@@ -92,7 +92,7 @@ export function highlightMarker(pointId) {
         L.DomUtil.addClass(markerToHighlight._icon, 'highlighted-marker');
         highlightedMarker = markerToHighlight;
         // Можно центрировать карту на маркере
-        // mainMap.setView(markerToHighlight.getLatLng(), mainMap.getZoom());
+        mainMap.setView(markerToHighlight.getLatLng(), mainMap.getZoom());
     } else {
          highlightedMarker = null;
     }

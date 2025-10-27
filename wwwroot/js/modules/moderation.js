@@ -7,7 +7,7 @@ const pointSelect = document.getElementById("point-select");
 export function initModeration() {
     setupSearch(entityType, 'message-search', attachEventHandlers);
     pointSelect.addEventListener("change", handlePointSelectChange);
-    consolde.log("Moderation module initialized");
+    console.log("Moderation module initialized");
 }
 
 export async function loadPointsForModeration() {
