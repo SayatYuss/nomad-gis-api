@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using NetTopologySuite.Geometries;
 
 namespace nomad_gis_V2.Models;
 
@@ -11,10 +13,8 @@ public class MapPoint
     public string Name { get; set; } = string.Empty;
 
     [Required]
-    public double Latitude { get; set; }
-
-    [Required]
-    public double Longitude { get; set; }
+    [Column(TypeName = "geography(Point, 4326)")]
+    public Point Location { get; set; } = null!;
 
     [Required]
     public double UnlockRadiusMeters { get; set; }
@@ -23,9 +23,7 @@ public class MapPoint
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Добавь навигацию для сообщений (одна точка -> много сообщений)
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 
-    // Навигация на прогресс (одна точка -> много открытий пользователями)
     public virtual ICollection<UserMapProgress> UserProgress { get; set; } = new List<UserMapProgress>();
 }

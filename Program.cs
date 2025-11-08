@@ -11,13 +11,16 @@ using nomad_gis_V2.Services;
 using System.Text;
 using Amazon.S3;
 using Amazon.Runtime;
+using Npgsql;
+using NetTopologySuite;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ========== PostgreSQL ==========
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        o => o.UseNetTopologySuite()
+    ));
 // ========== JWT Authentication ==========
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Secret"];

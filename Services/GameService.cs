@@ -1,5 +1,7 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using NetTopologySuite;
+using NetTopologySuite.Geometries;
 using nomad_gis_V2.Data;
 using nomad_gis_V2.DTOs.Achievements;
 using nomad_gis_V2.DTOs.Game;
@@ -13,11 +15,13 @@ public class GameService : IGameService
     private readonly ApplicationDbContext _context;
     private readonly IAchievementService _achievementService;
     private readonly IMapper _mapper;
+    private readonly GeometryFactory _geometryFactory;
     public GameService(ApplicationDbContext context, IAchievementService achievementService, IMapper mapper)
     {
         _context = context;
         _achievementService = achievementService;
         _mapper = mapper;
+        _geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326); 
     }
     public async Task<UnlockResponse> CheckAndUnlockPointsAsync(Guid userId, CheckLocationRequest request)
     {
@@ -30,46 +34,45 @@ public class GameService : IGameService
             .Select(p => p.MapPointId)
             .ToHashSetAsync();
 
+        var userLocation = _geometryFactory.CreatePoint(new Coordinate(request.Longitude, request.Latitude));
+
         var potentialPointsToUnlock = await _context.MapPoints
-            .Where(p => !unlockedPointIds.Contains(p.Id)) 
+            .Where(p => !unlockedPointIds.Contains(p.Id))
+            .Where(p => p.Location.IsWithinDistance(userLocation, p.UnlockRadiusMeters))
             .ToListAsync();
 
         foreach (var point in potentialPointsToUnlock)
         {
-            var distance = CalculateDistance(request.Latitude, request.Longitude, point.Latitude, point.Longitude);
-            System.Console.WriteLine($"Distance to point {point.Name}: {distance} meters");
-            if (distance <= point.UnlockRadiusMeters)
+            
+            var progress = new UserMapProgress
             {
-                var progress = new UserMapProgress
-                {
-                    UserId = userId,
-                    MapPointId = point.Id,
-                    UnlockedAt = DateTime.UtcNow
-                };
-                _context.UserMapProgress.Add(progress);
+                UserId = userId,
+                MapPointId = point.Id,
+                UnlockedAt = DateTime.UtcNow
+            };
+            _context.UserMapProgress.Add(progress);
 
-                int expGained = 100; // Допустим, 100 очков за точку
-                user.Experience += expGained;
+            int expGained = 100;
+            user.Experience += expGained;
 
-                await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
-                var newAchievemnts = await _achievementService.CheckUnlockAchievementsAsync(user, point);
+            var newAchievemnts = await _achievementService.CheckUnlockAchievementsAsync(user, point);
 
-                int achievementsExp = newAchievemnts.Sum(a => a.RewardPoints);
-                int totalExpGained = expGained + achievementsExp;
+            int achievementsExp = newAchievemnts.Sum(a => a.RewardPoints);
+            int totalExpGained = expGained + achievementsExp;
 
-                // 4. Сохраняем и выходим
-                await _context.SaveChangesAsync();
+            // 4. Сохраняем и выходим
+            await _context.SaveChangesAsync();
 
-                return new UnlockResponse
-                {
-                    Success = true,
-                    Message = $"Вы открыли точку: {point.Name}!",
-                    UnlockedPointId = point.Id,
-                    ExperienceGained = totalExpGained,
-                    unlockedAchievemnts = _mapper.Map<List<AchievementResponse>>(newAchievemnts)
-                };
-            }
+            return new UnlockResponse
+            {
+                Success = true,
+                Message = $"Вы открыли точку: {point.Name}!",
+                UnlockedPointId = point.Id,
+                ExperienceGained = totalExpGained,
+                unlockedAchievemnts = _mapper.Map<List<AchievementResponse>>(newAchievemnts)
+            };
         }
 
         return new UnlockResponse { Success = false, Message = "Поблизости нет новых точек." };
