@@ -7,6 +7,8 @@ using nomad_gis_V2.DTOs.Achievements;
 using nomad_gis_V2.DTOs.Game;
 using nomad_gis_V2.Interfaces;
 using nomad_gis_V2.Models;
+using nomad_gis_V2.Helpers;
+using nomad_gis_V2.DTOs.Auth;
 
 namespace nomad_gis_V2.Services;
 
@@ -16,14 +18,16 @@ public class GameService : IGameService
     private readonly IAchievementService _achievementService;
     private readonly IMapper _mapper;
     private readonly GeometryFactory _geometryFactory;
-    public GameService(ApplicationDbContext context, IAchievementService achievementService, IMapper mapper)
+    private readonly IExperienceService _experienceService;
+    public GameService(ApplicationDbContext context, IAchievementService achievementService, IMapper mapper, IExperienceService experienceService)
     {
         _context = context;
         _achievementService = achievementService;
         _mapper = mapper;
-        _geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326); 
+        _geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+        _experienceService = experienceService;
     }
-    public async Task<UnlockResponse> CheckAndUnlockPointsAsync(Guid userId, CheckLocationRequest request)
+    public async Task<GameEventResponse> CheckAndUnlockPointsAsync(Guid userId, CheckLocationRequest request)
     {
         var user = await _context.Users.FindAsync(userId);
         if (user == null)
@@ -52,54 +56,50 @@ public class GameService : IGameService
             };
             _context.UserMapProgress.Add(progress);
 
+            int newUnlockedCount = await _context.UserMapProgress
+                .CountAsync(p => p.UserId == userId) + 1;
+
+            var context = new AchievementContext{ TotalPointsUnlocked = newUnlockedCount };
+
+            var newAchievemnts = await _achievementService.CheckAchievementsAsync(
+                userId,
+                AchievementEvent.PointedUnlocked,
+                context
+            );
+
             int expGained = 100;
-            user.Experience += expGained;
-
-            await _context.SaveChangesAsync();
-
-            var newAchievemnts = await _achievementService.CheckUnlockAchievementsAsync(user, point);
-
             int achievementsExp = newAchievemnts.Sum(a => a.RewardPoints);
             int totalExpGained = expGained + achievementsExp;
 
-            // 4. Сохраняем и выходим
+            bool leveledUp = false;
+
+            if (totalExpGained > 0)
+            {
+                leveledUp = await _experienceService.AddExperienceAsync(user, totalExpGained);
+            }
+
             await _context.SaveChangesAsync();
 
-            return new UnlockResponse
+            return new GameEventResponse
             {
                 Success = true,
                 Message = $"Вы открыли точку: {point.Name}!",
                 UnlockedPointId = point.Id,
                 ExperienceGained = totalExpGained,
-                unlockedAchievemnts = _mapper.Map<List<AchievementResponse>>(newAchievemnts)
+                UnlockedAchievements = _mapper.Map<List<AchievementResponse>>(newAchievemnts),
+                LeveledUp = leveledUp,
+                UserData = new UserDto 
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    Username = user.Username,
+                    Experience = user.Experience,
+                    Level = user.Level,          
+                    AvatarUrl = user.AvatarUrl
+                }
             };
         }
 
-        return new UnlockResponse { Success = false, Message = "Поблизости нет новых точек." };
-    }
-
-    private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double R = 6371e3;
-
-        double dLat = ToRadians(lat2 - lat1);
-        double dLon = ToRadians(lon2 - lon1);
-
-        lat1 = ToRadians(lat1);
-        lat2 = ToRadians(lat2);
-
-        double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                Math.Cos(lat1) * Math.Cos(lat2) *
-                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
-        double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-
-        double distance = R * c;
-        return distance;
-    }  
-
-    private static double ToRadians(double angle)
-    {
-        return Math.PI * angle / 180.0;
+        return new GameEventResponse { Success = false, Message = "Поблизости нет новых точек." };
     }
 }

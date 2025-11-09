@@ -31,8 +31,8 @@ namespace nomad_gis_V2.Controllers
         public async Task<IActionResult> CreateMessage([FromBody] MessageRequest dto)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var created = await _messageService.CreateMessageAsync(userId, dto);
-            return CreatedAtAction(nameof(GetMessagesByPointId), new { pointId = created.MapPointId }, created);
+            var result = await _messageService.CreateMessageAsync(userId, dto);
+            return Ok(result);
         }
 
         [HttpDelete("{id}")]
@@ -65,10 +65,10 @@ namespace nomad_gis_V2.Controllers
         public async Task<IActionResult> LikeMessage(Guid id)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var result = await _messageService.ToggleLikeAsync(id, userId);
             
-            bool isLiked = await _messageService.ToggleLikeAsync(id, userId);
-            
-            return Ok(new { isLiked = isLiked });
+            return Ok(result);
         }
     }
 }

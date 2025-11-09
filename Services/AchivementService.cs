@@ -3,6 +3,7 @@ using Amazon.S3.Model;
 using Microsoft.EntityFrameworkCore;
 using nomad_gis_V2.Data;
 using nomad_gis_V2.DTOs.Achievements;
+using nomad_gis_V2.Helpers;
 using nomad_gis_V2.Interfaces;
 using nomad_gis_V2.Models;
 
@@ -14,60 +15,137 @@ public class AchievementService : IAchievementService
     private readonly IAmazonS3 _s3Client;
     private readonly IConfiguration _config;
     private readonly ILogger<AchievementService> _logger;
+    private readonly IExperienceService _experienceService;
 
-    public AchievementService(ApplicationDbContext context, 
-                              IAmazonS3 s3Client, 
-                              IConfiguration config, 
-                              ILogger<AchievementService> logger)
+    public AchievementService(ApplicationDbContext context,
+                              IAmazonS3 s3Client,
+                              IConfiguration config,
+                              ILogger<AchievementService> logger,
+                              IExperienceService experienceService)
     {
         _context = context;
         _s3Client = s3Client;
         _config = config;
         _logger = logger;
+        _experienceService = experienceService;
     }
 
-    public async Task<List<Achievement>> CheckUnlockAchievementsAsync(User user, MapPoint unlockedPoint)
+    public async Task<List<Achievement>> CheckAchievementsAsync(Guid userId, AchievementEvent eventType, AchievementContext context)
     {
-        var grantedAchievements = new List<Achievement>();
+        var grantedAchievemnts = new List<Achievement?>();
 
-        var unlockedCount = await _context.UserMapProgress
-                .CountAsync(p => p.UserId == user.Id);
-
-        if (unlockedCount == 1)
+        switch (eventType)
         {
-            var ach = await GrantAchivementAsync(user.Id, "OPEN_1_POINT");
-            if (ach != null) grantedAchievements.Add(ach);
+            case AchievementEvent.PointedUnlocked:
+                grantedAchievemnts.AddRange(
+                    await HandlePointAchievementsAsync(userId, context)
+                );
+                break;
+            case AchievementEvent.MessagePosted:
+                grantedAchievemnts.AddRange(
+                    await HandleMessageAchievementsAsync(userId, context)
+                );
+                break;
+            case AchievementEvent.MessageLiked:
+                grantedAchievemnts.AddRange(
+                    await HandleLikeAchievementsAsync(userId, context)
+                );
+                break;
+            case AchievementEvent.MessageLikeReceived:
+                grantedAchievemnts.AddRange(
+                    await HandleLikeReceivedAchievementsAsync(userId, context)
+                );
+                break;
         }
 
-        if (unlockedCount == 5)
+        return grantedAchievemnts.OfType<Achievement>().ToList();
+    }
+
+    private async Task<List<Achievement?>> HandlePointAchievementsAsync(Guid userId, AchievementContext context)
+    {
+        var achievements = new List<Achievement?>();
+        int count = context.TotalPointsUnlocked;
+
+        if (count == 1)
         {
-            var ach = await GrantAchivementAsync(user.Id, "OPEN_10_POINT");
-            if (ach != null) grantedAchievements.Add(ach);
+            achievements.Add(await TryGrantAchievementAsync(userId, "OPEN_1_POINT"));
+        }
+        if (count == 5)
+        {
+            achievements.Add(await TryGrantAchievementAsync(userId, "OPEN_10_POINT"));
+        }
+        if (count == 10)
+        {
+            achievements.Add(await TryGrantAchievementAsync(userId, "OPEN_50_POINT"));
         }
 
-        if (unlockedCount == 10)
+        return achievements;
+    }
+
+    private async Task<List<Achievement?>> HandleLikeReceivedAchievementsAsync(Guid userId, AchievementContext context)
+    {
+        var achievements = new List<Achievement?>();
+        int count = context.LikesOnThisMessage;
+
+        
+        if (count == 1)
         {
-            var ach = await GrantAchivementAsync(user.Id, "OPEN_50_POINT");
-            if (ach != null) grantedAchievements.Add(ach);
+            achievements.Add(await TryGrantAchievementAsync(userId, "MESSAGE_1_LIKE"));
+        }
+        if (count == 5)
+        {
+            achievements.Add(await TryGrantAchievementAsync(userId, "MESSAGE_5_LIKES"));
+        }
+        if (count == 10)
+        {
+            achievements.Add(await TryGrantAchievementAsync(userId, "MESSAGE_10_LIKES"));
         }
 
-        return grantedAchievements;
+        return achievements;
+    }
+
+    private async Task<List<Achievement?>> HandleMessageAchievementsAsync(Guid userId, AchievementContext context)
+    {
+        if (context.TotalMessagesPosted == 1)
+        {
+            return new List<Achievement?> 
+            {
+                await TryGrantAchievementAsync(userId, "FIRST_COMMENT") 
+            };
+        }
+        return new List<Achievement?>();
     }
     
-    private async Task<Achievement?> GrantAchivementAsync(Guid userId, string achievementCode)
+    private async Task<List<Achievement?>> HandleLikeAchievementsAsync(Guid userId, AchievementContext context)
+    {
+        if (context.TotalMessagesLiked == 1)
+        {
+            return new List<Achievement?> 
+            { 
+                await TryGrantAchievementAsync(userId, "FIRST_LIKE") 
+            };
+        }
+        return new List<Achievement?>();
+    }
+    
+    private async Task<Achievement?> TryGrantAchievementAsync(Guid userId, string achievementCode)
     {
         var achievement = await _context.Achievements
                 .FirstOrDefaultAsync(a => a.Code == achievementCode);
-        if (achievement == null) return null;
+                
+        if (achievement == null) 
+        {
+            _logger.LogWarning("Achievement with code {Code} not found.", achievementCode);
+            return null;
+        }
 
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return null;
 
-
         var alredyExists = await _context.UserAchievements
                 .AnyAsync(ua => ua.UserId == userId && ua.AchievementId == achievement.Id);
 
-        if (alredyExists == true) return null;
+        if (alredyExists == true) return null; 
 
         var userAchievements = new UserAchievement
         {
@@ -77,12 +155,11 @@ public class AchievementService : IAchievementService
             IsCompleted = true,
             CompletedAt = DateTime.UtcNow
         };
-
         _context.UserAchievements.Add(userAchievements);
 
         if (achievement.RewardPoints > 0)
         {
-            user.Experience += achievement.RewardPoints;
+            await _experienceService.AddExperienceAsync(user, achievement.RewardPoints);
         }
 
         return achievement;

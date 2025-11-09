@@ -60,6 +60,8 @@ builder.Services.AddScoped<IMapPointService, MapPointService>();
 builder.Services.AddScoped<IAchievementService, AchievementService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<IGameService, GameService>();
+builder.Services.AddScoped<IExperienceService, ExperienceService>();
+builder.Services.AddScoped<IProfileService, ProfileService>();
 
 // ========== CORS ==========
 builder.Services.AddCors(options =>
@@ -100,7 +102,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-Console.WriteLine("📡 Connection: " + builder.Configuration.GetConnectionString("DefaultConnection"));
+Console.WriteLine("Connection: " + builder.Configuration.GetConnectionString("DefaultConnection"));
 
 // ========== Автоматическое применение миграций (Render-friendly) ==========
 using (var scope = app.Services.CreateScope())
