@@ -32,7 +32,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // для Render можно оставить false
+    options.RequireHttpsMetadata = false;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -63,6 +63,7 @@ builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IExperienceService, ExperienceService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 
+builder.Services.AddHttpClient();
 // ========== CORS ==========
 builder.Services.AddCors(options =>
 {

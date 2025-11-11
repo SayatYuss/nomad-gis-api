@@ -2,6 +2,9 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
+using H3;
+using H3.Model;
+using H3.Extensions;
 using nomad_gis_V2.Data;
 using nomad_gis_V2.DTOs.Achievements;
 using nomad_gis_V2.DTOs.Game;
@@ -19,6 +22,8 @@ public class GameService : IGameService
     private readonly IMapper _mapper;
     private readonly GeometryFactory _geometryFactory;
     private readonly IExperienceService _experienceService;
+
+    private const int H3Resolution = 8;
     public GameService(ApplicationDbContext context, IAchievementService achievementService, IMapper mapper, IExperienceService experienceService)
     {
         _context = context;
@@ -33,6 +38,37 @@ public class GameService : IGameService
         if (user == null)
             throw new Exception("User not found");
 
+        /// fog of war
+        double lat = DegToRad(request.Latitude);
+        double lon = DegToRad(request.Longitude);
+        
+        var h3Location = new LatLng(lat, lon);
+        var h3Cell = H3Index.FromLatLng(h3Location, H3Resolution);
+        string cellId = h3Cell.ToString();
+
+        bool cellAlreadyCleared = await _context.UserClearedCells
+            .AnyAsync(c => c.UserId == userId && c.CellId == cellId);
+
+        bool cellWasNew = false;
+        if (!cellAlreadyCleared)
+        {
+            Polygon cellPolygon = h3Cell.GetCellBoundary(_geometryFactory);
+
+            cellPolygon.SRID = 4326;
+
+            var newCell = new UserClearedCell
+            {
+                UserId = userId,
+                CellId = cellId,
+                geom = cellPolygon,
+            };
+
+            await _context.UserClearedCells.AddAsync(newCell);
+
+            cellWasNew = true;
+        }
+
+        /// Check new points
         var unlockedPointIds = await _context.UserMapProgress
             .Where(p => p.UserId == userId)
             .Select(p => p.MapPointId)
@@ -47,7 +83,7 @@ public class GameService : IGameService
 
         foreach (var point in potentialPointsToUnlock)
         {
-            
+
             var progress = new UserMapProgress
             {
                 UserId = userId,
@@ -59,7 +95,7 @@ public class GameService : IGameService
             int newUnlockedCount = await _context.UserMapProgress
                 .CountAsync(p => p.UserId == userId) + 1;
 
-            var context = new AchievementContext{ TotalPointsUnlocked = newUnlockedCount };
+            var context = new AchievementContext { TotalPointsUnlocked = newUnlockedCount };
 
             var newAchievemnts = await _achievementService.CheckAchievementsAsync(
                 userId,
@@ -88,18 +124,31 @@ public class GameService : IGameService
                 ExperienceGained = totalExpGained,
                 UnlockedAchievements = _mapper.Map<List<AchievementResponse>>(newAchievemnts),
                 LeveledUp = leveledUp,
-                UserData = new UserDto 
+                UserData = new UserDto
                 {
                     Id = user.Id,
                     Email = user.Email,
                     Username = user.Username,
                     Experience = user.Experience,
-                    Level = user.Level,          
+                    Level = user.Level,
                     AvatarUrl = user.AvatarUrl
                 }
             };
         }
 
+        if (cellWasNew)
+        {
+            await _context.SaveChangesAsync();
+            return new GameEventResponse
+            {
+                Success = true,
+                Message = "Открыта новая местность!"
+            };
+        }
+
         return new GameEventResponse { Success = false, Message = "Поблизости нет новых точек." };
     }
+    
+    private double DegToRad(double deg) => deg * Math.PI / 180.0;
+
 }

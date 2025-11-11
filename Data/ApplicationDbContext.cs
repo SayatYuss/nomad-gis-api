@@ -16,10 +16,17 @@ public class ApplicationDbContext : DbContext
     public DbSet<Message> Messages { get; set; } = null!;
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
     public DbSet<MessageLike> MessageLikes { get; set; } = null!;
+    public DbSet<UserClearedCell> UserClearedCells { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<UserClearedCell>(b =>
+        {
+            b.HasIndex(c => c.geom)
+                .HasMethod("GIST");
+        });
 
         // ---- USER ----
         modelBuilder.Entity<User>(b =>

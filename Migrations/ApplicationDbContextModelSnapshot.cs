@@ -254,6 +254,27 @@ namespace nomad_gis_V2.Migrations
                     b.ToTable("UserAchievements");
                 });
 
+            modelBuilder.Entity("nomad_gis_V2.Models.UserClearedCell", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CellId")
+                        .HasColumnType("text");
+
+                    b.Property<Polygon>("geom")
+                        .IsRequired()
+                        .HasColumnType("geography(Polygon, 4326)");
+
+                    b.HasKey("UserId", "CellId");
+
+                    b.HasIndex("geom");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("geom"), "GIST");
+
+                    b.ToTable("UserClearedCells");
+                });
+
             modelBuilder.Entity("nomad_gis_V2.Models.UserMapProgress", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -336,6 +357,17 @@ namespace nomad_gis_V2.Migrations
                         .IsRequired();
 
                     b.Navigation("Achievement");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("nomad_gis_V2.Models.UserClearedCell", b =>
+                {
+                    b.HasOne("nomad_gis_V2.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
