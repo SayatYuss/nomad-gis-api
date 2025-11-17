@@ -13,8 +13,8 @@ using nomad_gis_V2.Data;
 namespace nomad_gis_V2.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251108005424_AddPostGisToMapPoints")]
-    partial class AddPostGisToMapPoints
+    [Migration("20251117165312_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
