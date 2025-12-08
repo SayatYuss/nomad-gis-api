@@ -12,7 +12,7 @@ using System.Text;
 using Amazon.S3;
 using Amazon.Runtime;
 using Npgsql;
-using NetTopologySuite;
+using nomad_gis_V2.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,7 +32,15 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // для Render можно оставить false
+    options.Events = new JwtBearerEvents
+    {
+        OnChallenge = context =>
+        {
+            context.HandleResponse();
+            throw new UnauthorizedException("Unauthorized");
+        }
+    };
+    options.RequireHttpsMetadata = false;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -88,6 +96,17 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
+    c.MapType<ErrorResponse>(() => new OpenApiSchema
+    {
+        Type = "object",
+        Properties =
+        {
+            ["message"] = new OpenApiSchema
+            {
+                Type = "string"
+            }
+        }
+    });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -137,18 +156,19 @@ using (var scope = app.Services.CreateScope())
 
 
 // ========== Middleware ==========
+app.UseCors("AllowAdminPanel");
+
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseCors("AllowAdminPanel");
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

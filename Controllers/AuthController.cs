@@ -18,8 +18,15 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    /// <summary>
+    /// Регистрация пользователя.
+    /// </summary>
+    /// <param name="request">Данные нового пользователя</param>
+    /// <returns>Токены + профиль пользователя</returns>
     [HttpPost("register")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         var httpReq = HttpContext;
@@ -27,8 +34,16 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Вход в существующий аккаунт
+    /// </summary>
+    /// <param name="request">Данные для входа</param>
+    /// <returns></returns>
     [HttpPost("login")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
