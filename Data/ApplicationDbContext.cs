@@ -3,20 +3,63 @@ using nomad_gis_V2.Models;
 
 namespace nomad_gis_V2.Data;
 
+/// <summary>
+/// Контекст базы данных приложения Nomad GIS.
+/// Управляет всеми сущностями: пользователи, точки, ачивки, сообщения и т.д.
+/// </summary>
 public class ApplicationDbContext : DbContext
 {
+    /// <summary>
+    /// Инициализирует новый экземпляр класса ApplicationDbContext.
+    /// </summary>
+    /// <param name="options">Опции конфигурации контекста базы данных</param>
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options) { }
 
+    /// <summary>
+    /// Получает или задает набор пользователей в базе данных.
+    /// </summary>
     public DbSet<User> Users { get; set; } = null!;
+
+    /// <summary>
+    /// Получает или задает набор ачивок в базе данных.
+    /// </summary>
     public DbSet<Achievement> Achievements { get; set; } = null!;
+
+    /// <summary>
+    /// Получает или задает набор связей между пользователями и ачивками.
+    /// </summary>
     public DbSet<UserAchievement> UserAchievements { get; set; } = null!;
+
+    /// <summary>
+    /// Получает или задает набор записей о прогрессе пользователей по открытию точек на карте.
+    /// </summary>
     public DbSet<UserMapProgress> UserMapProgress { get; set; } = null!;
+
+    /// <summary>
+    /// Получает или задает набор точек интереса на карте.
+    /// </summary>
     public DbSet<MapPoint> MapPoints { get; set; } = null!;
+
+    /// <summary>
+    /// Получает или задает набор сообщений и комментариев на точках.
+    /// </summary>
     public DbSet<Message> Messages { get; set; } = null!;
+
+    /// <summary>
+    /// Получает или задает набор refresh токенов для аутентификации.
+    /// </summary>
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+
+    /// <summary>
+    /// Получает или задает набор лайков на сообщениях.
+    /// </summary>
     public DbSet<MessageLike> MessageLikes { get; set; } = null!;
 
+    /// <summary>
+    /// Конфигурирует модель данных и устанавливает отношения между сущностями.
+    /// </summary>
+    /// <param name="modelBuilder">Построитель модели для конфигурирования сущностей</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -117,11 +160,17 @@ public class ApplicationDbContext : DbContext
         });
     }
 
+    /// <summary>
+    /// Асинхронно сохраняет все изменения в базу данных.
+    /// Автоматически устанавливает метки времени для создания и обновления.
+    /// </summary>
+    /// <param name="cancellationToken">Токен отмены для асинхронной операции</param>
+    /// <returns>Количество строк, затронутых операцией сохранения</returns>
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var entries = ChangeTracker
             .Entries()
-            .Where(e => e.Entity is User && 
+            .Where(e => e.Entity is User &&
                         (e.State == EntityState.Added || e.State == EntityState.Modified));
 
         foreach (var entityEntry in entries)

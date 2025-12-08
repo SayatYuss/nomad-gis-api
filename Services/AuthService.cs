@@ -5,10 +5,14 @@ using nomad_gis_V2.DTOs.Auth;
 using nomad_gis_V2.Interfaces;
 using nomad_gis_V2.Models;
 using nomad_gis_V2.Exceptions;
-using Amazon.S3; // <-- 1. ПОДКЛЮЧАЕМ ИСКЛЮЧЕНИЯ
+using Amazon.S3;
 
 namespace nomad_gis_V2.Services;
 
+/// <summary>
+/// Сервис для управления аутентификацией и регистрацией пользователей.
+/// Обрабатывает вход, регистрацию, обновление токенов и выход.
+/// </summary>
 public class AuthService : IAuthService
 {
     private readonly ApplicationDbContext _context;
@@ -17,6 +21,9 @@ public class AuthService : IAuthService
     private readonly IAmazonS3 _s3Client;
     private readonly IConfiguration _config;
 
+    /// <summary>
+    /// Инициализирует новый экземпляр сервиса аутентификации.
+    /// </summary>
     public AuthService(ApplicationDbContext context, JwtService jwtService, IPasswordHasher<User> passwordHasher, IAmazonS3 s3Client, IConfiguration config)
     {
         _context = context;
@@ -24,9 +31,16 @@ public class AuthService : IAuthService
         _passwordHasher = passwordHasher;
         _s3Client = s3Client;
         _config = config;
-        
+
     }
 
+    /// <summary>
+    /// Асинхронно регистрирует нового пользователя в системе.
+    /// Создает учетную запись и генерирует начальные токены.
+    /// </summary>
+    /// <param name="request">Данные для регистрации (email, пароль, имя пользователя, ID устройства)</param>
+    /// <param name="httpContext">HTTP контекст текущего запроса</param>
+    /// <returns>Ответ с access и refresh токенами и информацией о пользователе</returns>
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, HttpContext httpContext)
     {
         // 2. Генерируем кастомные исключения
@@ -47,7 +61,7 @@ public class AuthService : IAuthService
 
         var httpReq = httpContext.Request;
         var baseUrl = _config["R2Storage:PublicUrlBase"];
-        
+
         var user = new User
         {
             Username = request.Username,
@@ -90,6 +104,12 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Асинхронно выполняет вход пользователя в систему.
+    /// Проверяет учетные данные и генерирует токены.
+    /// </summary>
+    /// <param name="request">Данные для входа (email/имя пользователя, пароль, ID устройства)</param>
+    /// <returns>Ответ с access и refresh токенами и информацией о пользователе</returns>
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Identifier || u.Username == request.Identifier);
@@ -114,7 +134,7 @@ public class AuthService : IAuthService
             Token = refreshToken,
             UserId = user.Id,
             DeviceId = request.DeviceId,
-            Expires = DateTime.UtcNow.AddDays(7) 
+            Expires = DateTime.UtcNow.AddDays(7)
         };
         _context.RefreshTokens.Add(rt);
         await _context.SaveChangesAsync();
@@ -136,6 +156,11 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Асинхронно обновляет access токен используя refresh токен.
+    /// </summary>
+    /// <param name="request">Данные для обновления токена (ID пользователя, refresh токен, ID устройства)</param>
+    /// <returns>Ответ с новыми access и refresh токенами</returns>
     public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
     {
         var refreshToken = await _context.RefreshTokens
@@ -158,8 +183,8 @@ public class AuthService : IAuthService
 
         // ... (код обновления токена)
         refreshToken.Token = newRefreshToken;
-        refreshToken.Expires = DateTime.UtcNow.AddDays(7); 
-        
+        refreshToken.Expires = DateTime.UtcNow.AddDays(7);
+
         _context.RefreshTokens.Update(refreshToken);
         await _context.SaveChangesAsync();
 
@@ -179,6 +204,11 @@ public class AuthService : IAuthService
         };
     }
 
+    /// <summary>
+    /// Асинхронно выполняет выход пользователя из системы (инвалидирует refresh токен).
+    /// </summary>
+    /// <param name="request">Данные для выхода (ID пользователя, refresh токен, ID устройства)</param>
+    /// <returns>True если токен успешно инвалидирован, false если токен не найден</returns>
     public async Task<bool> LogoutAsync(LogoutRequest request)
     {
         var refreshToken = await _context.RefreshTokens
@@ -194,7 +224,7 @@ public class AuthService : IAuthService
 
         _context.RefreshTokens.Remove(refreshToken);
         await _context.SaveChangesAsync();
-        
+
         return true;
     }
 }

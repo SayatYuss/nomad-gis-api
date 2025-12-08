@@ -87,7 +87,30 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Nomad GIS API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Nomad GIS API",
+        Version = "v1",
+        Description = "API для геолокационной игры Nomad GIS. Поддерживает регистрацию, аутентификацию, управление точками на карте, ачивками, сообщениями и рейтингами.",
+        Contact = new OpenApiContact
+        {
+            Name = "API Support",
+            Url = new Uri("https://github.com/SayatYuss/nomad-gis-api")
+        },
+        License = new OpenApiLicense
+        {
+            Name = "MIT"
+        }
+    });
+
+    // Включаем XML-комментарии в документацию Swagger
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Введите JWT токен так: Bearer {your token}",

@@ -5,6 +5,10 @@ namespace nomad_gis_V2.Exceptions;
 /// </summary>
 public class ValidationException : Exception
 {
+    /// <summary>
+    /// Инициализирует новый экземпляр исключения валидации.
+    /// </summary>
+    /// <param name="message">Сообщение об ошибке</param>
     public ValidationException(string message) : base(message) { }
 }
 
@@ -13,6 +17,10 @@ public class ValidationException : Exception
 /// </summary>
 public class NotFoundException : Exception
 {
+    /// <summary>
+    /// Инициализирует новый экземпляр исключения "не найдено".
+    /// </summary>
+    /// <param name="message">Сообщение об ошибке</param>
     public NotFoundException(string message) : base(message) { }
 }
 
@@ -21,6 +29,10 @@ public class NotFoundException : Exception
 /// </summary>
 public class DuplicateException : Exception
 {
+    /// <summary>
+    /// Инициализирует новый экземпляр исключения дубликата.
+    /// </summary>
+    /// <param name="message">Сообщение об ошибке</param>
     public DuplicateException(string message) : base(message) { }
 }
 
@@ -29,5 +41,10 @@ public class DuplicateException : Exception
 /// </summary>
 public class UnauthorizedException : Exception
 {
+    /// <summary>
+    /// Инициализирует новый экземпляр исключения отсутствия авторизации.
+    /// </summary>
+    /// <param name="message">Сообщение об ошибке</param>
     public UnauthorizedException(string message) : base(message) { }
 }
+

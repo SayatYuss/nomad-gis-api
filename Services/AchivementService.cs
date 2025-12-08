@@ -9,6 +9,10 @@ using nomad_gis_V2.Models;
 
 namespace nomad_gis_V2.Services;
 
+/// <summary>
+/// Сервис для управления достижениями пользователей.
+/// Проверяет условия разблокировки и управляет наградами и опытом.
+/// </summary>
 public class AchievementService : IAchievementService
 {
     private readonly ApplicationDbContext _context;
@@ -17,6 +21,14 @@ public class AchievementService : IAchievementService
     private readonly ILogger<AchievementService> _logger;
     private readonly IExperienceService _experienceService;
 
+    /// <summary>
+    /// Инициализирует новый экземпляр сервиса для управления достижениями.
+    /// </summary>
+    /// <param name="context">Контекст базы данных</param>
+    /// <param name="s3Client">Клиент AWS S3 для загрузки иконок достижений</param>
+    /// <param name="config">Конфигурация приложения</param>
+    /// <param name="logger">Логгер для отслеживания ошибок</param>
+    /// <param name="experienceService">Сервис для начисления опыта за достижения</param>
     public AchievementService(ApplicationDbContext context,
                               IAmazonS3 s3Client,
                               IConfiguration config,
@@ -30,6 +42,13 @@ public class AchievementService : IAchievementService
         _experienceService = experienceService;
     }
 
+    /// <summary>
+    /// Проверяет, какие достижения может разблокировать пользователь в зависимости от события.
+    /// </summary>
+    /// <param name="userId">ID пользователя</param>
+    /// <param name="eventType">Тип события (разблокировка точки, сообщение, лайк и т.д.)</param>
+    /// <param name="context">Контекст с информацией о прогрессе пользователя</param>
+    /// <returns>Список новых разблокированных достижений</returns>
     public async Task<List<Achievement>> CheckAchievementsAsync(Guid userId, AchievementEvent eventType, AchievementContext context)
     {
         var grantedAchievemnts = new List<Achievement?>();
@@ -87,7 +106,7 @@ public class AchievementService : IAchievementService
         var achievements = new List<Achievement?>();
         int count = context.LikesOnThisMessage;
 
-        
+
         if (count == 1)
         {
             achievements.Add(await TryGrantAchievementAsync(userId, "MESSAGE_1_LIKE"));
@@ -108,32 +127,32 @@ public class AchievementService : IAchievementService
     {
         if (context.TotalMessagesPosted == 1)
         {
-            return new List<Achievement?> 
+            return new List<Achievement?>
             {
-                await TryGrantAchievementAsync(userId, "FIRST_COMMENT") 
+                await TryGrantAchievementAsync(userId, "FIRST_COMMENT")
             };
         }
         return new List<Achievement?>();
     }
-    
+
     private async Task<List<Achievement?>> HandleLikeAchievementsAsync(Guid userId, AchievementContext context)
     {
         if (context.TotalMessagesLiked == 1)
         {
-            return new List<Achievement?> 
-            { 
-                await TryGrantAchievementAsync(userId, "FIRST_LIKE") 
+            return new List<Achievement?>
+            {
+                await TryGrantAchievementAsync(userId, "FIRST_LIKE")
             };
         }
         return new List<Achievement?>();
     }
-    
+
     private async Task<Achievement?> TryGrantAchievementAsync(Guid userId, string achievementCode)
     {
         var achievement = await _context.Achievements
                 .FirstOrDefaultAsync(a => a.Code == achievementCode);
-                
-        if (achievement == null) 
+
+        if (achievement == null)
         {
             _logger.LogWarning("Achievement with code {Code} not found.", achievementCode);
             return null;
@@ -145,7 +164,7 @@ public class AchievementService : IAchievementService
         var alredyExists = await _context.UserAchievements
                 .AnyAsync(ua => ua.UserId == userId && ua.AchievementId == achievement.Id);
 
-        if (alredyExists == true) return null; 
+        if (alredyExists == true) return null;
 
         var userAchievements = new UserAchievement
         {
@@ -165,6 +184,10 @@ public class AchievementService : IAchievementService
         return achievement;
     }
 
+    /// <summary>
+    /// Получает список всех доступных достижений.
+    /// </summary>
+    /// <returns>Список всех достижений с описанием и наградами</returns>
     public async Task<List<AchievementResponse>> GetAllAsync()
     {
         return await _context.Achievements
@@ -180,6 +203,12 @@ public class AchievementService : IAchievementService
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Получает информацию о достижении по его ID.
+    /// </summary>
+    /// <param name="id">Уникальный идентификатор достижения</param>
+    /// <returns>Полная информация о достижении</returns>
+    /// <exception cref="Exception">Выбрасывает исключение если достижение не найдено</exception>
     public async Task<AchievementResponse> GetByIdAsync(Guid id)
     {
         var a = await _context.Achievements.FindAsync(id);
@@ -196,6 +225,12 @@ public class AchievementService : IAchievementService
         };
     }
 
+    /// <summary>
+    /// Создаёт новое достижение с иконкой в S3.
+    /// </summary>
+    /// <param name="request">Данные для создания достижения (код, название, описание, награда, иконка)</param>
+    /// <returns>Созданное достижение с присвоенным ID</returns>
+    /// <exception cref="BadHttpRequestException">Выбрасывает исключение если достижение с таким кодом уже существует</exception>
     public async Task<AchievementResponse> CreateAsync(AchievementCreateRequest request)
     {
         if (await _context.Achievements.AnyAsync(a => a.Code == request.Code))
@@ -233,6 +268,13 @@ public class AchievementService : IAchievementService
         };
     }
 
+    /// <summary>
+    /// Обновляет информацию существующего достижения, включая иконку.
+    /// </summary>
+    /// <param name="id">Уникальный идентификатор достижения для обновления</param>
+    /// <param name="request">Новые данные для достижения</param>
+    /// <returns>Обновленное достижение</returns>
+    /// <exception cref="Exception">Выбрасывает исключение если достижение не найдено</exception>
     public async Task<AchievementResponse> UpdateAsync(Guid id, AchievementUpdateRequest request)
     {
         var achievement = await _context.Achievements.FindAsync(id);
@@ -261,6 +303,11 @@ public class AchievementService : IAchievementService
         };
     }
 
+    /// <summary>
+    /// Удаляет достижение и его иконку из S3.
+    /// </summary>
+    /// <param name="id">Уникальный идентификатор достижения для удаления</param>
+    /// <returns>True если достижение успешно удалено, false если достижение не найдено</returns>
     public async Task<bool> DeleteAsync(Guid id)
     {
         var achievement = await _context.Achievements.FindAsync(id);
@@ -289,7 +336,7 @@ public class AchievementService : IAchievementService
     {
         var bucketName = _config["R2Storage:BucketName"];
         var publicUrlBase = _config["R2Storage:PublicUrlBase"];
-        
+
         var fileExtension = Path.GetExtension(file.FileName);
         var uniqueFileName = $"{achievementCode.ToLower()}{fileExtension}";
 
@@ -302,7 +349,7 @@ public class AchievementService : IAchievementService
                     var oldKey = Path.GetFileName(new Uri(oldImageUrl).LocalPath);
                     if (oldKey != uniqueFileName)
                     {
-                         await _s3Client.DeleteObjectAsync(bucketName, oldKey);
+                        await _s3Client.DeleteObjectAsync(bucketName, oldKey);
                     }
                 }
                 catch (Exception ex)

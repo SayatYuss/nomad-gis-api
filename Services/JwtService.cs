@@ -7,6 +7,10 @@ using nomad_gis_V2.Models;
 
 namespace nomad_gis_V2.Services;
 
+/// <summary>
+/// Сервис для управления JWT токенами (access и refresh).
+/// Генерирует, валидирует и декодирует JWT токены для аутентификации.
+/// </summary>
 public class JwtService
 {
     private readonly string _jwtSecret;
@@ -15,6 +19,10 @@ public class JwtService
     private readonly int _accessTokenExpirationMinutes;
     private readonly int _refreshTokenExpirationDays;
 
+    /// <summary>
+    /// Инициализирует новый экземпляр сервиса JWT.
+    /// </summary>
+    /// <param name="configuration">Конфигурация приложения</param>
     public JwtService(IConfiguration configuration)
     {
         _jwtSecret = configuration["Jwt:Secret"] ?? throw new Exception("Jwt:Secret not configured");
@@ -26,7 +34,7 @@ public class JwtService
         {
             _accessTokenExpirationMinutes = 15; // Значение по умолчанию
         }
-        
+
         if (!int.TryParse(configuration["Jwt:RefreshTokenExpirationDays"], out _refreshTokenExpirationDays))
         {
             _refreshTokenExpirationDays = 7; // Значение по умолчанию
@@ -34,6 +42,11 @@ public class JwtService
         // --- КОНЕЦ ИЗМЕНЕНИЙ ---
     }
 
+    /// <summary>
+    /// Генерирует пару access и refresh токенов для пользователя.
+    /// </summary>
+    /// <param name="user">Пользователь, для которого генерируются токены</param>
+    /// <returns>Кортеж с access и refresh токенами</returns>
     public (string AccessToken, string RefreshToken) GenerateTokens(User user)
     {
         var claims = new[]

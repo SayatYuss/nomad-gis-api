@@ -7,6 +7,10 @@ using nomad_gis_V2.Exceptions; // Подключаем кастомные иск
 
 namespace nomad_gis_V2.Controllers
 {
+    /// <summary>
+    /// API контроллер для управления пользователями (только для администраторов).
+    /// Предоставляет endpoints для получения информации о пользователях, изменения ролей и удаления.
+    /// </summary>
     [ApiController]
     [Route("api/v1/users")]
     [Authorize(Roles = "Admin")] // <-- Весь контроллер только для Админов
@@ -14,15 +18,23 @@ namespace nomad_gis_V2.Controllers
     {
         private readonly ApplicationDbContext _context;
 
+        /// <summary>
+        /// Инициализирует новый экземпляр класса UsersController.
+        /// </summary>
+        /// <param name="context">Контекст базы данных приложения</param>
         public UsersController(ApplicationDbContext context)
         {
             _context = context;
         }
 
         /// <summary>
-        /// Получить всех пользователей
+        /// Получить список всех пользователей.
         /// </summary>
+        /// <returns>Список пользователей с базовой информацией</returns>
         [HttpGet]
+        [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _context.Users
@@ -43,9 +55,16 @@ namespace nomad_gis_V2.Controllers
         }
 
         /// <summary>
-        /// Получить детальную информацию о пользователе
+        /// Получить детальную информацию о пользователе.
+        /// Включает историю открытых точек и достигнутых ачивок.
         /// </summary>
+        /// <param name="id">ID пользователя</param>
+        /// <returns>Детальная информация о пользователе с прогрессом</returns>
         [HttpGet("{id}/details")]
+        [ProducesResponseType(typeof(UserDetailResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetUserDetails(Guid id)
         {
             var user = await _context.Users
@@ -94,9 +113,18 @@ namespace nomad_gis_V2.Controllers
         }
 
         /// <summary>
-        /// Изменить роль пользователя
+        /// Изменить роль пользователя.
+        /// Позволяет назначать пользователю роль Admin или User.
         /// </summary>
+        /// <param name="id">ID пользователя</param>
+        /// <param name="request">Новая роль пользователя</param>
+        /// <returns>Сообщение об успешном обновлении</returns>
         [HttpPut("{id}/role")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> UpdateUserRole(Guid id, [FromBody] UpdateRoleRequest request)
         {
             if (request.Role != "Admin" && request.Role != "User")
@@ -119,9 +147,16 @@ namespace nomad_gis_V2.Controllers
         }
 
         /// <summary>
-        /// Удалить пользователя
+        /// Удалить пользователя и все связанные данные.
+        /// Удаляет сообщения, прогресс, ачивки и другие данные пользователя.
         /// </summary>
+        /// <param name="id">ID пользователя</param>
+        /// <returns>Сообщение об успешном удалении</returns>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> DeleteUser(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -129,7 +164,7 @@ namespace nomad_gis_V2.Controllers
             {
                 throw new NotFoundException("User not found");
             }
-            
+
             // Благодаря DeleteBehavior.Cascade в твоем ApplicationDbContext,
             // EF Core автоматически удалит связанные Messages, RefreshTokens и т.д.
 

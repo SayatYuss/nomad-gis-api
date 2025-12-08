@@ -12,6 +12,10 @@ using nomad_gis_V2.DTOs.Auth;
 
 namespace nomad_gis_V2.Services;
 
+/// <summary>
+/// Сервис для обработки игровых событий и разблокировки точек на карте.
+/// Проверяет местоположение пользователя и разблокирует достижения.
+/// </summary>
 public class GameService : IGameService
 {
     private readonly ApplicationDbContext _context;
@@ -19,6 +23,14 @@ public class GameService : IGameService
     private readonly IMapper _mapper;
     private readonly GeometryFactory _geometryFactory;
     private readonly IExperienceService _experienceService;
+
+    /// <summary>
+    /// Инициализирует новый экземпляр сервиса для обработки игровых событий.
+    /// </summary>
+    /// <param name="context">Контекст базы данных</param>
+    /// <param name="achievementService">Сервис для проверки и разблокировки достижений</param>
+    /// <param name="mapper">Маппер для преобразования моделей в DTO</param>
+    /// <param name="experienceService">Сервис для управления опытом пользователя</param>
     public GameService(ApplicationDbContext context, IAchievementService achievementService, IMapper mapper, IExperienceService experienceService)
     {
         _context = context;
@@ -27,6 +39,14 @@ public class GameService : IGameService
         _geometryFactory = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
         _experienceService = experienceService;
     }
+
+    /// <summary>
+    /// Проверяет местоположение пользователя и разблокирует близлежащие точки карты.
+    /// Автоматически проверяет достижения и начисляет опыт.
+    /// </summary>
+    /// <param name="userId">ID пользователя</param>
+    /// <param name="request">Координаты пользователя (широта, долгота)</param>
+    /// <returns>Информацию о разблокированной точке, полученном опыте и новых достижениях</returns>
     public async Task<GameEventResponse> CheckAndUnlockPointsAsync(Guid userId, CheckLocationRequest request)
     {
         var user = await _context.Users.FindAsync(userId);

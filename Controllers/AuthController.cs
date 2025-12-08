@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace nomad_gis_V2.Controllers;
 
+/// <summary>
+/// API контроллер для аутентификации и управления сеансами пользователя.
+/// Предоставляет endpoints для регистрации, входа, обновления токенов и выхода.
+/// </summary>
 [ApiController]
 [Route("api/v1/auth")]
 [Authorize]
@@ -13,6 +17,10 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
 
+    /// <summary>
+    /// Инициализирует новый экземпляр класса AuthController.
+    /// </summary>
+    /// <param name="authService">Сервис аутентификации</param>
     public AuthController(IAuthService authService)
     {
         _authService = authService;
@@ -50,8 +58,16 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Обновить токен доступа используя refresh токен.
+    /// </summary>
+    /// <param name="request">Refresh токен</param>
+    /// <returns>Новая пара токенов (Access + Refresh)</returns>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
         // try-catch убран.
@@ -59,7 +75,15 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Выход из аккаунта (инвалидация refresh токена).
+    /// </summary>
+    /// <param name="request">Refresh токен для инвалидации</param>
+    /// <returns>Сообщение об успешном выходе</returns>
     [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
     {
         // try-catch убран.

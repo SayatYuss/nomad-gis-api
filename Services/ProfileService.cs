@@ -9,25 +9,38 @@ using nomad_gis_V2.DTOs.Points;
 using nomad_gis_V2.Interfaces;
 using nomad_gis_V2.Models;
 using nomad_gis_V2.Profile;
-using nomad_gis_V2.Exceptions; 
+using nomad_gis_V2.Exceptions;
 using Amazon.S3.Model;
 
 namespace nomad_gis_V2.Services;
 
+/// <summary>
+/// Сервис для управления профилями пользователей.
+/// Обрабатывает обновление информации пользователя, аватаров и пароля.
+/// </summary>
 public class ProfileService : IProfileService
 {
     private readonly ApplicationDbContext _context;
     private readonly IPasswordHasher<User> _passwordHasher;
     private readonly IAmazonS3 _s3Client;
-    private readonly ILogger<ProfileService> _logger; 
+    private readonly ILogger<ProfileService> _logger;
     private readonly IConfiguration _config;
     private readonly IMapper _mapper;
 
+    /// <summary>
+    /// Инициализирует новый экземпляр сервиса для управления профилями.
+    /// </summary>
+    /// <param name="context">Контекст базы данных</param>
+    /// <param name="passwordHasher">Хешер для шифрования паролей</param>
+    /// <param name="s3Client">Клиент AWS S3 для загрузки аватаров</param>
+    /// <param name="logger">Логгер для отслеживания ошибок</param>
+    /// <param name="config">Конфигурация приложения</param>
+    /// <param name="mapper">Маппер для преобразования моделей в DTO</param>
     public ProfileService(
         ApplicationDbContext context,
         IPasswordHasher<User> passwordHasher,
         IAmazonS3 s3Client,
-        ILogger<ProfileService> logger, 
+        ILogger<ProfileService> logger,
         IConfiguration config,
         IMapper mapper)
     {
@@ -39,6 +52,12 @@ public class ProfileService : IProfileService
         _mapper = mapper;
     }
 
+    /// <summary>
+    /// Получает информацию о профиле пользователя по его ID.
+    /// </summary>
+    /// <param name="userId">ID пользователя</param>
+    /// <returns>Информацию профиля пользователя (имя, email, уровень, опыт и т.д.)</returns>
+    /// <exception cref="NotFoundException">Выбрасывает исключение если пользователь не найден</exception>
     public async Task<UserDto> GetUserProfileAsync(Guid userId)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -49,6 +68,11 @@ public class ProfileService : IProfileService
         return _mapper.Map<UserDto>(user);
     }
 
+    /// <summary>
+    /// Получает список точек, разблокированных пользователем.
+    /// </summary>
+    /// <param name="userId">ID пользователя</param>
+    /// <returns>Список разблокированных точек карты</returns>
     public async Task<List<MapPointRequest>> GetUserPointsAsync(Guid userId)
     {
         var unlockedPoints = await _context.UserMapProgress
@@ -60,6 +84,11 @@ public class ProfileService : IProfileService
         return _mapper.Map<List<MapPointRequest>>(unlockedPoints);
     }
 
+    /// <summary>
+    /// Получает список достижений, разблокированных пользователем.
+    /// </summary>
+    /// <param name="userId">ID пользователя</param>
+    /// <returns>Список разблокированных достижений</returns>
     public async Task<List<AchievementResponse>> GetUserAchievementsAsync(Guid userId)
     {
         var userAchievements = await _context.UserAchievements
@@ -71,13 +100,21 @@ public class ProfileService : IProfileService
         return _mapper.Map<List<AchievementResponse>>(userAchievements);
     }
 
+    /// <summary>
+    /// Загружает новый аватар пользователя в AWS S3.
+    /// </summary>
+    /// <param name="userId">ID пользователя</param>
+    /// <param name="file">Файл аватара для загрузки</param>
+    /// <returns>URL загруженного аватара в S3</returns>
+    /// <exception cref="ValidationException">Выбрасывает исключение если файл не выбран или пуст</exception>
+    /// <exception cref="NotFoundException">Выбрасывает исключение если пользователь не найден</exception>
     public async Task<string> UploadAvatarAsync(Guid userId, IFormFile file)
     {
         if (file == null || file.Length == 0)
         {
             throw new ValidationException("No file uploaded.");
         }
-        
+
         var user = await _context.Users.FindAsync(userId);
         if (user == null)
         {
@@ -92,6 +129,13 @@ public class ProfileService : IProfileService
         return publicUrl;
     }
 
+    /// <summary>
+    /// Обновляет информацию профиля пользователя (имя, пароль).
+    /// </summary>
+    /// <param name="userId">ID пользователя</param>
+    /// <param name="request">Новые данные профиля (имя, текущий пароль, новый пароль)</param>
+    /// <returns>Обновленная информация профиля пользователя</returns>
+    /// <exception cref="NotFoundException">Выбрасывает исключение если пользователь не найден</exception>
     public async Task<UserDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
     {
         var user = await _context.Users.FindAsync(userId);
@@ -133,7 +177,7 @@ public class ProfileService : IProfileService
             user.AvatarUrl = publicUrl;
             hasChanges = true;
         }
-        
+
         if (hasChanges)
         {
             await _context.SaveChangesAsync();
@@ -141,7 +185,7 @@ public class ProfileService : IProfileService
 
         return _mapper.Map<UserDto>(user);
     }
-    
+
     private async Task<string> UploadFileToStorageAsync(IFormFile file, string fileKey, string? oldImageUrl)
     {
         var bucketName = _config["R2Storage:BucketName"];
@@ -185,7 +229,7 @@ public class ProfileService : IProfileService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error uploading file to R2 for key {FileKey}", fileKey);
-            throw new Exception("Error occurred while uploading new avatar.", ex); 
+            throw new Exception("Error occurred while uploading new avatar.", ex);
         }
     }
 }

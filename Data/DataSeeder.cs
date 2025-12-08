@@ -4,14 +4,23 @@ using nomad_gis_V2.Models;
 
 namespace nomad_gis_V2.Data
 {
+    /// <summary>
+    /// Класс для заполнения начальных данных в базе данных приложения.
+    /// </summary>
     public static class DataSeeder
     {
+        /// <summary>
+        /// Асинхронно создает и заполняет учетную запись администратора при первом запуске приложения.
+        /// Читает учетные данные администратора из конфигурации приложения.
+        /// </summary>
+        /// <param name="serviceProvider">Поставщик сервисов для доступа к контексту БД и другим сервисам</param>
+        /// <param name="configuration">Конфигурация приложения, содержащая данные администратора</param>
         public static async Task SeedAdminUser(IServiceProvider serviceProvider, IConfiguration configuration)
         {
             // Получаем нужные сервисы
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
             var passwordHasher = serviceProvider.GetRequiredService<IPasswordHasher<User>>();
-            
+
             // 1. Получаем данные админа из appsettings.json
             var adminEmail = configuration["AdminAccount:Email"];
             var adminUsername = configuration["AdminAccount:Username"];
@@ -45,7 +54,7 @@ namespace nomad_gis_V2.Data
 
             await context.Users.AddAsync(adminUser);
             await context.SaveChangesAsync();
-            
+
             Console.WriteLine("Admin user created successfully.");
         }
     }
